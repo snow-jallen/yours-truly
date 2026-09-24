@@ -153,7 +153,9 @@ jobs:
       #     upload`, which this workflow does not use. Velopack.dll contains no mention
       #     of either name.
       #
-      # Only the third kind is dropped. If an update ever fails to be found, that is the
+      # Only the third kind is dropped. Checked rather than assumed: with v1.0.7
+      # published without them, GithubSource.GetReleaseFeed still resolves 1.0.7 on all
+      # three channels. If an update ever does fail to be found, they are still the
       # first thing to put back.
       - name: Gather everything into one folder
         run: |
