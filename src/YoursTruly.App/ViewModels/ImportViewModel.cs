@@ -105,6 +105,7 @@ public sealed partial class ImportViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(TargetPath));
         OnPropertyChanged(nameof(HasTarget));
+        OnPropertyChanged(nameof(IsReady));
         Replan();
     }
 
@@ -164,6 +165,10 @@ public sealed partial class ImportViewModel : ObservableObject
     [ObservableProperty] private string _mappingProblem = "";
     [ObservableProperty] private string _groupLine = "";
 
+    /// <summary>Whether the Import button does anything. Three things have to be true,
+    /// and every one of them has to tell the screen when it changes — a stale IsReady
+    /// is a disabled button with nothing on screen explaining why, which is the worst
+    /// way for this to fail. See OnTargetChanged, which once forgot.</summary>
     public bool IsReady => MappingProblem.Length == 0 && HasFile && HasTarget;
 
     partial void OnMappingProblemChanged(string value) => OnPropertyChanged(nameof(IsReady));

@@ -180,6 +180,76 @@ public sealed class UserInterfaceTests : IDisposable
         }, _folder);
 
     [Fact]
+    public Task A_file_that_maps_cleanly_can_be_imported_straight_away() =>
+        InWindow(async (_, model) =>
+        {
+            // No list open, one list remembered — what a fresh install looks like the
+            // first time somebody imports into a list they made earlier.
+            var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+            var saved = Path.Combine(_folder, "manti-singles.db");
+            AppServices.Start(saved, store.Path);
+            store.Save(store.Load() with
+            {
+                DatabasePath = "",
+                Lists = [new YoursTruly.Messaging.Settings.SavedList("Manti singles", saved)],
+            });
+
+            var services = AppServices.Start(settingsPath: store.Path);
+            Assert.False(services.HasList);
+
+            var import = new ImportViewModel(
+                services, new NoFiles(), store, (_, _) => { }, () => Task.CompletedTask);
+            model.Current = import;
+
+            var file = Path.Combine(_folder, "singles.pdf");
+            File.WriteAllBytes(file, SyntheticReport.Build());
+            await import.LoadAsync(file);
+
+            // Seven columns, every one of them understood, and a list to put them in.
+            Assert.Equal(7, import.Columns.Count);
+            Assert.Equal("", import.MappingProblem);
+            Assert.True(import.HasFile);
+            Assert.True(import.HasTarget);
+            Assert.True(import.IsReady, "the import button is disabled with nothing wrong to show");
+        }, _folder);
+
+    [Fact]
+    public Task Choosing_where_to_save_enables_the_import_button() =>
+        InWindow(async (_, model) =>
+        {
+            // A fresh install: no list open and none remembered, so the import screen
+            // opens with nowhere to put anybody and the button correctly disabled. Its
+            // own settings file, because the window this runs in has already made one
+            // and put a list in it.
+            var store = new SettingsStore(Path.Combine(_folder, "fresh", "settings.json"));
+            var services = AppServices.Start(settingsPath: store.Path);
+            var import = new ImportViewModel(
+                services, new NoFiles(), store, (_, _) => { }, () => Task.CompletedTask);
+            model.Current = import;
+
+            var file = Path.Combine(_folder, "singles.pdf");
+            File.WriteAllBytes(file, SyntheticReport.Build());
+            await import.LoadAsync(file);
+
+            Assert.True(import.HasFile);
+            Assert.Equal("", import.MappingProblem);
+            Assert.False(import.HasTarget);
+            Assert.False(import.IsReady);
+
+            // Pointing at a list is the last thing missing, and the button has to
+            // notice. It did not: HasTarget was announced and IsReady was not, so the
+            // path appeared on screen beside a button that stayed grey for no visible
+            // reason.
+            var told = new List<string>();
+            import.PropertyChanged += (_, e) => told.Add(e.PropertyName ?? "");
+
+            import.Target = new ListChoice("Manti singles", Path.Combine(_folder, "manti.db"));
+
+            Assert.Contains(nameof(ImportViewModel.IsReady), told);
+            Assert.True(import.IsReady);
+        }, _folder);
+
+    [Fact]
     public Task Changing_what_a_column_is_changes_what_the_import_would_do() =>
         InWindow(async (_, model) =>
         {

@@ -120,7 +120,7 @@
             <TextBlock Classes="eyebrow" Text="YOUR SIGNATURE"/>
             <TextBox Text="{Binding Signature}" AcceptsReturn="True" Height="66" TextWrapping="Wrap"
                      MaxLength="{Binding SignatureMaxLength}"
-                     PlaceholderText="Jonathan Allen, Thunder FC"/>
+                     PlaceholderText="Your name, and anything else that tells them it is you"/>
           </StackPanel>
           <Border Background="{DynamicResource Surface2}" CornerRadius="8" Padding="12,10"
                   BorderBrush="{DynamicResource Line}" BorderThickness="1">
@@ -169,7 +169,8 @@
           </Grid>
           <StackPanel Spacing="6">
             <TextBlock Classes="eyebrow" Text="NAME PEOPLE SEE (OPTIONAL)"/>
-            <TextBox Text="{Binding DisplayName}" PlaceholderText="Jonathan Allen"/>
+            <TextBox Text="{Binding DisplayName}"
+                     PlaceholderText="Blank uses the name from your signature"/>
           </StackPanel>
 
           <Border Background="{DynamicResource AccentSoft}" CornerRadius="8" Padding="12,10">
