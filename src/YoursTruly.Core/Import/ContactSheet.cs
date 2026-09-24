@@ -22,16 +22,32 @@ public sealed record ContactSheet(
     string FileName,
     string Sha256)
 {
-    /// <summary>False when the file had no heading row the app could find and it was
-    /// read by hunting for e-mail addresses and phone numbers instead. Worth saying on
-    /// screen: the columns are the app's invention rather than the file's.</summary>
-    public bool HeadingsFound { get; init; } = true;
+    /// <summary>How the file had to be read. Worth saying on screen: only a table
+    /// names its own columns, and in the other two shapes the columns are the app's
+    /// invention rather than the file's.</summary>
+    public SheetShape Shape { get; init; } = SheetShape.Table;
+
+    public bool HeadingsFound => Shape is SheetShape.Table;
 
     /// <summary>The first few values in a column, for showing the user what they are
     /// deciding about. Blanks are left out — a column's first three rows being empty
     /// says nothing about the column.</summary>
     public IReadOnlyList<string> Sample(int column, int howMany = 3) =>
         [.. Rows.Select(r => r.Cell(column)).Where(v => v.Length > 0).Distinct().Take(howMany)];
+}
+
+/// <summary>What a file turned out to be.</summary>
+public enum SheetShape
+{
+    /// <summary>A table whose own heading row names its columns.</summary>
+    Table,
+
+    /// <summary>A printed directory: blocks of people laid out in bands down the page,
+    /// with no table anywhere in it.</summary>
+    Records,
+
+    /// <summary>Neither, so every line was searched for an address and a number.</summary>
+    Loose,
 }
 
 /// <summary>A file that could not be read as a list of people.</summary>

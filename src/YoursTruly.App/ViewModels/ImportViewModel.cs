@@ -147,10 +147,15 @@ public sealed partial class ImportViewModel : ObservableObject
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private bool _failed;
 
-    /// <summary>Said out loud when the file had no heading row and the app read it by
-    /// hunting for e-mail addresses and phone numbers: the columns below are its own
-    /// invention, not the file's, and that changes how much they should be trusted.</summary>
-    [ObservableProperty] private bool _guessedColumns;
+    /// <summary>What to say about how the file had to be read, or empty when it was an
+    /// ordinary table that named its own columns. In the other two shapes the columns
+    /// below are the app's invention rather than the file's, and that changes how much
+    /// they should be trusted.</summary>
+    [ObservableProperty] private string _shapeNote = "";
+
+    public bool GuessedColumns => ShapeNote.Length > 0;
+
+    partial void OnShapeNoteChanged(string value) => OnPropertyChanged(nameof(GuessedColumns));
 
     /// <summary>Whether people already here but missing from this file are marked as no
     /// longer listed. On, because that is what importing an up-to-date list means — and
@@ -203,7 +208,20 @@ public sealed partial class ImportViewModel : ObservableObject
 
             FileName = sheet.FileName;
             FileDetail = $"{sheet.PageCount} pages · {sheet.Rows.Count} rows · {sheet.Columns.Count} columns";
-            GuessedColumns = !sheet.HeadingsFound;
+            ShapeNote = sheet.Shape switch
+            {
+                SheetShape.Records =>
+                    "This is a printed directory rather than a table, so it was read as blocks of "
+                    + "people: a household, then everybody under it. Names, email addresses and "
+                    + "phone numbers are all it can take from a file like this — check the samples "
+                    + "below, and expect people with no way of being reached, who are in the "
+                    + "printout and can have a number added later.",
+                SheetShape.Loose =>
+                    "This file has no heading row and no blocks the app could find, so it was read "
+                    + "by looking for email addresses and phone numbers and taking whatever was "
+                    + "left on the line as the name. Check the samples below before importing.",
+                _ => "",
+            };
             HasFile = true;
 
             var guess = ImportMapping.Guess(sheet);

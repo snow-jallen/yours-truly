@@ -99,17 +99,7 @@ public static class Headings
         }
 
         var gap = PdfTableReader.TwoHeaps(gaps) ?? size * LooseSpace;
-        var joined = new List<Word>();
-
-        foreach (var word in words)
-        {
-            if (joined.Count > 0 && word.X - joined[^1].End <= gap)
-                joined[^1] = new Word(joined[^1].X, word.End, $"{joined[^1].Text} {word.Text}");
-            else
-                joined.Add(word);
-        }
-
-        return [.. joined.Where(CouldBeAHeading)];
+        return [.. line.Runs(gap).Where(CouldBeAHeading)];
     }
 
     private static bool CouldBeAHeading(Word word) =>

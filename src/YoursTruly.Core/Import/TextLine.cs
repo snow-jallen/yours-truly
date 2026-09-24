@@ -78,6 +78,20 @@ public sealed class TextLine
         return words;
     }
 
+    /// <summary>The words of this line joined up while they are less than
+    /// <paramref name="maxGap"/> apart, so a phrase comes back as one run and the thing
+    /// across the page from it comes back as another.</summary>
+    public IReadOnlyList<Word> Runs(double maxGap)
+    {
+        var joined = new List<Word>();
+        foreach (var word in Words())
+            if (joined.Count > 0 && word.X - joined[^1].End <= maxGap)
+                joined[^1] = new Word(joined[^1].X, word.End, $"{joined[^1].Text} {word.Text}");
+            else
+                joined.Add(word);
+        return joined;
+    }
+
     /// <summary>The typical size of the text on this line, used to judge whether a
     /// horizontal gap is a space or the edge of a column.</summary>
     public double TextSize

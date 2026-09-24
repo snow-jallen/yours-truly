@@ -43,7 +43,11 @@ public static partial class ContactSheetReader
         // too few gaps on it to tell a wrapped cell from a new row.
         var rowBreak = PdfTableReader.RowBreak([.. pages.SelectMany(p => p)]);
 
+        // A table if it has a heading row; a printed directory if it is blocks of
+        // people in bands; and failing both, every line searched for an address and a
+        // number. In that order, because each knows more than the one after it.
         var sheet = ReadTable(pages, rowBreak, pageCount, fileName, sha)
+                 ?? ReadRecords(pages, pageCount, fileName, sha)
                  ?? ReadLoosely(pages, rowBreak, pageCount, fileName, sha);
 
         return sheet ?? throw new ImportException(
@@ -187,6 +191,20 @@ public static partial class ContactSheetReader
     private static string Merge(string a, string b) =>
         a.Length == 0 ? b : b.Length == 0 ? a : $"{a} {b}";
 
+    // --- a printed directory rather than a table --------------------------------------
+
+    private static ContactSheet? ReadRecords(
+        IReadOnlyList<IReadOnlyList<TextLine>> pages, int pageCount, string fileName, string sha)
+    {
+        var rows = RecordBlockReader.Read(pages);
+        return rows is null
+            ? null
+            : new ContactSheet(["Name", "Email", "Phone"], rows, pageCount, fileName, sha)
+            {
+                Shape = SheetShape.Records,
+            };
+    }
+
     // --- no headings: hunt for addresses --------------------------------------------
 
     /// <summary>The last resort, and the one that makes "anything with names, e-mails
@@ -224,7 +242,7 @@ public static partial class ContactSheetReader
             ? null
             : new ContactSheet(["Name", "Email", "Phone"], rows, pageCount, fileName, sha)
             {
-                HeadingsFound = false,
+                Shape = SheetShape.Loose,
             };
     }
 

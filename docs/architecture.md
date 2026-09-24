@@ -103,6 +103,36 @@ Details that each cost a debugging session:
   Three patterns are checked as well, for a footer that starts inside the table: a page
   number, a count, and a bare URL.
 
+### When it is not a table but a printed directory
+
+Some files are not tables at all. A ward directory printout is blocks of people laid out
+down the page like a phone book: a household heading carrying the surname, the adults
+side by side in bands beneath it with their own callings and numbers under each, and the
+children in up to three bands below that.
+
+Read as lines it is nonsense — two adults share every line, so their names, their
+callings and their numbers all run together and one of them disappears. Read loosely, a
+32-page printout of 436 people came back as 161 rows, each one a whole household mashed
+into a single name.
+
+Read as **bands** it comes apart cleanly, because a person's name and their details
+share an x position and nothing else on the page does. `RecordBlockReader` splits every
+line into the runs standing side by side on it, groups those by x, and walks each band
+down the page: a name starts a person, and what follows in that band belongs to them
+until the next name.
+
+Three text sizes carry the structure and all three are read off the document:
+
+* The **household** size is found by what it says rather than how big it is — it carries
+  a surname and a comma, over and over. Going by size alone picks the page header, which
+  is bigger and on every page and is not a household.
+* The **name** and **detail** sizes are the two commonest below it, larger first. The
+  addresses, set between the two, fall out of the reckoning, which is where Yours Truly
+  wants them anyway.
+
+Somebody with no email and no phone is still imported. The children are individuals, the
+printout lists them, and a number can be added later.
+
 ### When there is no table at all
 
 A file with no heading row Yours Truly can find is searched line by line for an e-mail
