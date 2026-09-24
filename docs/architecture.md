@@ -192,10 +192,15 @@ A PDF with nobody findable in it fails loudly with `ImportException`, naming wha
 looked for — and naming a scanned picture of a list, which is the failure most worth
 calling out: it looks like exactly the right file and has no text in it whatsoever.
 
-The five layouts in `tests/YoursTruly.Tests/Fixtures/layouts/` — the same fifteen
-invented people printed as a table, as cards, as a two-up directory, as forms and as a
-mainframe dump — are the regression set. None of them is taught to the reader. **If a
-sixth turns up and fails, the answer is not a sixth reader.**
+The six files in `samples/` — the same fifteen invented people printed as a headingless
+table, as cards, as a two-up directory, as forms, as a mainframe dump, and as a proper
+nine-column report — are the regression set. They live there rather than under `tests/`
+because they are also what somebody is invited to try the app on: one copy, and a sample
+that stops importing fails the build. The sixth is the easy case and matters for the
+opposite reason to the rest — it has a heading row, so it must keep taking the `Table`
+path and keep offering its own nine columns, rather than falling through to the record
+reader and coming back with three. None of the six is taught to the reader. **If a
+seventh turns up and fails, the answer is not a seventh reader.**
 
 ## What the columns mean
 

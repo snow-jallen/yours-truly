@@ -3,20 +3,22 @@ using YoursTruly.Core.Import;
 
 namespace YoursTruly.Tests;
 
-/// <summary>The same fifteen people, printed five different ways: a table, profile
-/// cards, a two-up directory grouped by affiliation, intake forms, and a mainframe dump
-/// of KEY=VALUE stanzas.
+/// <summary>Fifteen people printed six different ways: a table with no headings, profile
+/// cards, a two-up directory grouped by affiliation, intake forms, a mainframe dump of
+/// KEY=VALUE stanzas, and a nine-column report that does have a heading row.
 ///
 /// These are the files that showed the importer was wrong. Read by hunting line by line
 /// for addresses — which is what it used to do — they came back as fifteen people called
-/// "COMLINK MESSAGE ADDRESS", and two of the five quietly lost a third to two-thirds of
-/// their people while reporting no problem at all.
+/// "COMLINK MESSAGE ADDRESS", and two of them quietly lost a third to two-thirds of their
+/// people while reporting no problem at all.
 ///
-/// None of these layouts is taught to the reader. If a sixth turns up and fails, the
-/// answer is not a sixth reader.</summary>
+/// They live in samples/ because they are also what somebody is invited to try the app
+/// on. None of these layouts is taught to the reader. If a seventh turns up and fails,
+/// the answer is not a seventh reader.</summary>
 public sealed class VariedLayoutTests
 {
-    public static TheoryData<string> Layouts() =>
+    /// <summary>The five that name nothing about themselves.</summary>
+    private static readonly string[] NoHeadings =
     [
         "01-operations-table.pdf",
         "02-profile-cards.pdf",
@@ -24,6 +26,15 @@ public sealed class VariedLayoutTests
         "04-intake-forms.pdf",
         "05-mainframe-export.pdf",
     ];
+
+    /// <summary>The one file that does name its own columns.</summary>
+    private const string WithHeadings = "06-system-report.pdf";
+
+    public static TheoryData<string> Headless() => [.. NoHeadings];
+
+    /// <summary>All six. Whatever else differs between them, every one has to give up
+    /// the same fifteen people.</summary>
+    public static TheoryData<string> Layouts() => [.. NoHeadings, WithHeadings];
 
     [Theory]
     [MemberData(nameof(Layouts))]
@@ -69,14 +80,36 @@ public sealed class VariedLayoutTests
     }
 
     [Theory]
-    [MemberData(nameof(Layouts))]
+    [MemberData(nameof(Headless))]
     public void Says_the_columns_are_its_own_invention(string file)
     {
-        // None of these files names its columns, so the import screen has to say the
+        // None of these five names its columns, so the import screen has to say the
         // headings came from the app rather than from the page.
         var sheet = ContactSheetReader.Read(TestPaths.Layout(file));
         Assert.NotEqual(SheetShape.Table, sheet.Shape);
         Assert.False(sheet.HeadingsFound);
+    }
+
+    [Fact]
+    public void Uses_a_heading_row_where_the_file_has_one()
+    {
+        // The sixth file is the easy case and has to stay easy. A heading row is the
+        // only thing that says what a column *means* — geometry cannot tell an interest
+        // from a department — so a file carrying one must never fall through to the
+        // record reader, which would find the same people and throw the other six
+        // columns away.
+        var sheet = ContactSheetReader.Read(TestPaths.Layout(WithHeadings));
+
+        Assert.Equal(SheetShape.Table, sheet.Shape);
+        Assert.True(sheet.HeadingsFound);
+        Assert.Equal(
+            ["RECORD", "NAME", "PHONE", "EMAIL", "DEPARTMENT", "LOCATION", "START DATE",
+             "INTEREST", "STATUS"],
+            sheet.Columns);
+
+        // And the columns it offers are the file's own words, which is what the user
+        // then maps on the import screen.
+        Assert.Contains("Operations", sheet.Sample(4));
     }
 
     [Fact]

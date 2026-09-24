@@ -16,6 +16,8 @@ Built for one person on one computer, with no server and no account to sign into
    exactly what would change before anything is written. A column it does not recognise
    — Team, Year, Unit — becomes groups you can send to. People who drop out of a later
    file are marked inactive, never deleted.
+   There are six files in [`samples/`](samples/) to try it on, holding the same fifteen
+   invented people printed six completely different ways.
 2. **Keep several lists.** A soccer team, a primary class and your neighbours are three
    different sets of people, so they are three files. Name them what you call them and
    switch between them from the bottom of the rail.
@@ -61,8 +63,19 @@ Put `[skip release]` in the commit message to push without building one.
 The workflow runs the tests, then builds and packages on three real runners — Windows,
 Linux and Apple silicon — because an installer has to be made on the system it installs
 onto. There is no Intel Mac build; GitHub's Intel runners now queue for a long time and
-often never start, and the workflow says where to add it back. It publishes the installers to a GitHub release, alongside the small
-manifest Yours Truly reads to notice that a newer version exists.
+often never start, and the workflow says where to add it back.
+
+It publishes the installers to a GitHub release, with named download links at the top of
+the notes, alongside the manifest and package Yours Truly reads to notice that a newer
+version exists. A release is a flat list of files with no folders to tidy into, so the
+only lever is publishing fewer: the Squirrel-era `RELEASES` files and the
+`assets.*.json` notes are dropped, because nothing reads them. **If an update ever stops
+being found, putting those back is the first thing to try.**
+
+The installers are unsigned — signing needs a paid Apple or Microsoft developer account
+— so both operating systems warn on first launch. The release notes say how to get past
+it. Updates after that are silent, because the app writes them itself and they are never
+quarantined.
 
 Yours Truly then updates itself: **Setup → Updates → Check for updates** downloads it and
 offers to restart into it. That only works in a copy installed from a release; run from
@@ -76,10 +89,12 @@ To build one locally without packaging:
 
     dotnet test
 
-About 400 tests, a few seconds. The suite never needs a real directory: the PDF reader
-is tested against synthetic files built in code with the same geometry as real ones —
-three laid out like directory exports, one like a soccer roster, and one with no table
-in it at all. The window itself is tested headless, so a mistyped binding fails the
+About 470 tests, a few seconds. The suite never needs a real directory. The PDF reader
+is tested two ways: against synthetic files built in code with the same geometry as real
+ones — three laid out like directory exports, one like a soccer roster, one with no
+table in it at all — and against the six real PDFs in [`samples/`](samples/), which are
+the same files anybody is invited to try the app on, so a sample that stops importing
+fails the build. The window itself is tested headless, so a mistyped binding fails the
 build rather than the user. If you drop a genuine export in
 `tests/YoursTruly.Tests/Fixtures/private/` (gitignored), extra tests run against it and
 check that every person the file's own footer counts comes back with a readable name,

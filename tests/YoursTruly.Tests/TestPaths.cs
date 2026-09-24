@@ -16,10 +16,14 @@ internal static class TestPaths
         }
     }
 
-    /// <summary>One of the five committed layout fixtures. These hold no real people,
-    /// so unlike the exports below they are always present.</summary>
+    /// <summary>One of the committed sample files. They hold no real people, so unlike
+    /// the exports below they are always present.
+    ///
+    /// Read from samples/ rather than from a copy under Fixtures, so that the files
+    /// somebody is invited to try the app on are the same bytes the suite checks. A
+    /// sample that stops importing fails the build.</summary>
     public static string Layout(string name) =>
-        Path.Combine(RepoRoot ?? ".", "tests", "YoursTruly.Tests", "Fixtures", "layouts", name);
+        Path.Combine(RepoRoot ?? ".", "samples", name);
 
     /// <summary>A real LCR export, if one has been placed in the gitignored folder.
     /// Null on a machine that has never seen the real directory.</summary>

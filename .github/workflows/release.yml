@@ -138,12 +138,29 @@ jobs:
         with:
           path: artifacts
 
-      # Velopack's own release files live alongside the installers: the app reads them
-      # to work out whether there is anything newer than what it is running.
+      # A GitHub release is a flat list of files — there are no folders to tidy things
+      # into — so the only way to keep the page readable is to publish less. Three kinds
+      # of file come out of packaging:
+      #
+      #   * the installers, which are what anybody visiting the page wants;
+      #   * releases.<channel>.json and the .nupkg beside it, which ARE the auto-update
+      #     feed. The running app fetches them to work out whether there is anything
+      #     newer. They have to sit on the latest release or every installed copy stops
+      #     updating, so they stay however untidy they look;
+      #   * RELEASES, RELEASES-linux, RELEASES-osx and assets.<channel>.json, which
+      #     nothing reads. The first three are Squirrel-era compatibility files and this
+      #     app has only ever shipped on Velopack 1.x; the last are notes for `vpk
+      #     upload`, which this workflow does not use. Velopack.dll contains no mention
+      #     of either name.
+      #
+      # Only the third kind is dropped. If an update ever fails to be found, that is the
+      # first thing to put back.
       - name: Gather everything into one folder
         run: |
           mkdir -p Releases
           find artifacts -type f -exec cp -n {} Releases/ \;
+          rm -f Releases/RELEASES Releases/RELEASES-linux Releases/RELEASES-osx
+          rm -f Releases/assets.*.json
           ls -la Releases
 
       - name: Publish the release
@@ -154,3 +171,45 @@ jobs:
           files: Releases/*
           generate_release_notes: true
           fail_on_unmatched_files: true
+          # Named downloads at the top, so nobody has to guess which of the files below
+          # is the one for them. The generated notes are appended underneath this.
+          body: |
+            ### Download
+
+            | | |
+            | --- | --- |
+            | **Windows** | [YoursTruly-win-Setup.exe](${{ github.server_url }}/${{ github.repository }}/releases/download/v${{ needs.test.outputs.version }}/YoursTruly-win-Setup.exe) |
+            | **macOS** (Apple Silicon) | [YoursTruly-osx-Setup.pkg](${{ github.server_url }}/${{ github.repository }}/releases/download/v${{ needs.test.outputs.version }}/YoursTruly-osx-Setup.pkg) |
+            | **Linux** | [YoursTruly.AppImage](${{ github.server_url }}/${{ github.repository }}/releases/download/v${{ needs.test.outputs.version }}/YoursTruly.AppImage) |
+
+            There are also `-Portable.zip` builds for Windows and macOS that run from a
+            folder without installing anything.
+
+            Yours Truly updates itself after this — you only download by hand once.
+
+            <details>
+            <summary>The installer is not signed, so your computer will warn you</summary>
+
+            Signing costs an Apple or Microsoft developer account, and this is a personal
+            app, so it does not have one. Nothing about the warning says the app is
+            unsafe — only that nobody has paid to vouch for it. The source is all here
+            and the release is built by GitHub from it.
+
+            **macOS:** double-clicking the `.pkg` gives "Apple could not verify this is
+            free of malware". Open **System Settings → Privacy & Security**, find the
+            blocked item near the bottom, click **Open Anyway**, then run the installer
+            again. Or in Terminal:
+            `xattr -dr com.apple.quarantine ~/Downloads/YoursTruly-osx-Setup.pkg`
+
+            **Windows:** SmartScreen shows "Windows protected your PC". Click **More
+            info**, then **Run anyway**.
+
+            </details>
+
+            <details>
+            <summary>What the other files are</summary>
+
+            `releases.*.json` and the `.nupkg` files are how the app checks for and
+            downloads its own updates. They are not for downloading by hand.
+
+            </details>
