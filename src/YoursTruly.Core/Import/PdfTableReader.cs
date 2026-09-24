@@ -75,7 +75,7 @@ public static class PdfTableReader
         // table, never a wrapped cell. Leaving them in drags the split up the page.
         var considered = gaps.Where(g => g <= size * 4).ToList();
 
-        return Otsu(considered) ?? size * LineAndAHalf;
+        return TwoHeaps(considered) ?? size * LineAndAHalf;
     }
 
     /// <summary>What to use when the page will not say: a gap of more than one and a
@@ -101,8 +101,15 @@ public static class PdfTableReader
     private const int Fewest = 3;
     private const double LeastShare = 0.2;
 
-    /// <summary>The threshold between the two heaps, or null when there is only one.</summary>
-    private static double? Otsu(IReadOnlyList<double> values)
+    /// <summary>The threshold between two heaps of measurements, or null when there is
+    /// only one heap and nothing to split.
+    ///
+    /// Asked twice, of two different things: the gaps between lines, where the heaps
+    /// are "inside a wrapped row" and "between rows", and the gaps between words on a
+    /// heading, where they are "a space inside a heading" and "the edge of a column".
+    /// Both are the same question, and neither has an answer that can be written down
+    /// in advance — one real export packs its headings under two spaces apart.</summary>
+    internal static double? TwoHeaps(IReadOnlyList<double> values)
     {
         if (values.Count < Fewest * 2) return null;
 
@@ -125,6 +132,12 @@ public static class PdfTableReader
             var spread = below * (double)above * Math.Pow(meanBelow - meanAbove, 2);
             if (spread <= best) continue;
 
+            // The strongest split wins, and then has to be worth believing — not the
+            // strongest believable one. If the clearest division in the data is one
+            // that cannot be trusted, the data is not cleanly in two heaps and no
+            // division should be trusted: two wrapped rows among forty is not evidence
+            // of anything, and the fallback handles it far better than the next-best
+            // split, which would put the line between two kinds of row gap.
             best = spread;
             at = Believable(below, above, sorted.Count) && meanAbove / meanBelow >= Separated
                 ? (sorted[i] + sorted[i + 1]) / 2

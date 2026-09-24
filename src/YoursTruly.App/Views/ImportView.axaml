@@ -12,7 +12,7 @@
   <Grid RowDefinitions="*,Auto">
 
     <ScrollViewer Grid.Row="0" Name="ImportScroller"
-                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                  VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled">
       <StackPanel Margin="28,26,28,18" Spacing="0">
 
         <TextBlock Classes="h2" Text="Import a file of people"/>
@@ -145,7 +145,7 @@
                    is hundreds of rows, and putting all of them in the page's own scroll
                    would realise every one of them. -->
               <ScrollViewer Grid.Row="3" Name="ChangesScroller" MaxHeight="300"
-                            VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled">
                 <ItemsControl ItemsSource="{Binding Changes}">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:ChangeRow">

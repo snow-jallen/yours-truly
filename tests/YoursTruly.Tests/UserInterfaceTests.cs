@@ -893,6 +893,40 @@ public sealed class UserInterfaceTests : IDisposable
         }, _folder);
 
     [Fact]
+    public Task The_whole_import_page_can_be_scrolled_to() =>
+        InWindow(async (window, model) =>
+        {
+            var import = Importing();
+            model.Current = import;
+            var file = Path.Combine(_folder, "singles.pdf");
+            File.WriteAllBytes(file, SyntheticReport.Build());
+            await import.LoadAsync(file);
+
+            Resize(window, 1150, 900);
+
+            var scroller = window.GetVisualDescendants().OfType<ScrollViewer>()
+                .Single(v => v.Name == "ImportScroller");
+            scroller.ScrollToEnd();
+            Dispatcher.UIThread.RunJobs();
+            Resize(window, 1150, 900);
+
+            // Scrolled to the bottom, the last thing on the page has to be above the
+            // action bar rather than under it.
+            var bar = window.GetVisualDescendants().OfType<Border>()
+                .First(b => b.GetVisualDescendants().OfType<Button>()
+                             .Any(x => Equals(x.Content, "Import these people")));
+            var lastCard = window.GetVisualDescendants().OfType<ComboBox>()
+                .Last(c => c.PlaceholderText == "Choose a list, or start one");
+
+            var cardBottom = lastCard.TranslatePoint(new Point(0, lastCard.Bounds.Height), window)!.Value.Y;
+            var barTop = bar.TranslatePoint(new Point(0, 0), window)!.Value.Y;
+
+            Assert.True(cardBottom <= barTop + 1,
+                $"the last control sits at {cardBottom:0} and the action bar starts at {barTop:0}, " +
+                "so the end of the page cannot be reached");
+        }, _folder);
+
+    [Fact]
     public Task Setup_offers_a_way_into_the_twilio_account() =>
         InWindow(async (window, model) =>
         {

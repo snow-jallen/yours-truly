@@ -21,10 +21,22 @@ public static class Headings
     /// other table — a summary, a key, a smaller table printed above the people.</summary>
     private const int Needed = 2;
 
-    /// <summary>A horizontal gap wider than this fraction of the text size is the edge
-    /// of a column rather than a space inside a heading. A space is about a quarter of
-    /// the point size; the gap between two columns is several times it.</summary>
-    private const double ColumnGap = 0.6;
+    /// <summary>Where a line does not have enough words to say for itself, a gap wider
+    /// than this fraction of the text size is the edge of a column rather than a space
+    /// inside a heading. A space is about 0.28 of the point size, so this is a little
+    /// under two of them.
+    ///
+    /// Only a fallback. It is not safe as a rule: one real export sets "Birth Date",
+    /// "Phone Number" and "Email" four points apart on eight point text, which is
+    /// narrower than two spaces, and any fixed threshold that keeps them apart splits
+    /// "Birth Date" down the middle. Lines with enough words are measured instead.</summary>
+    private const double LooseSpace = 0.45;
+
+    /// <summary>A gap wider than the text size is not a space, whatever else is true,
+    /// so it is left out of the measuring rather than allowed to skew it. One column
+    /// gap of 1.35 times the size was enough to drag the split past the tight columns
+    /// beside it and run three headings into one.</summary>
+    private const double Arguable = 1.0;
 
     /// <summary>Two phrases starting within this fraction of the text size of each other
     /// are the same column, stacked. "Preferred" over "Name" is one heading, printed on
@@ -70,10 +82,26 @@ public static class Headings
     /// names a person, and the first row of data is mistaken for the heading.</summary>
     private static IReadOnlyList<Word> Phrases(TextLine line, double size)
     {
-        var gap = size * ColumnGap;
+        var words = line.Words();
+
+        // The spaces inside the headings and the gaps between them are two heaps of
+        // measurement, and a line carrying enough of both says where the split is
+        // without being told. Only a line too sparse to cluster falls back to a rule.
+        // Only the narrow gaps are worth clustering. A space is never much over half
+        // the point size, so anything well above that is a column edge whatever else is
+        // true — and leaving the huge ones in drags the split up until it swallows the
+        // tight columns, which is the bug this is here to avoid.
+        var gaps = new List<double>();
+        for (var i = 1; i < words.Count; i++)
+        {
+            var between = Math.Max(0, words[i].X - words[i - 1].End);
+            if (between <= size * Arguable) gaps.Add(between);
+        }
+
+        var gap = PdfTableReader.TwoHeaps(gaps) ?? size * LooseSpace;
         var joined = new List<Word>();
 
-        foreach (var word in line.Words())
+        foreach (var word in words)
         {
             if (joined.Count > 0 && word.X - joined[^1].End <= gap)
                 joined[^1] = new Word(joined[^1].X, word.End, $"{joined[^1].Text} {word.Text}");

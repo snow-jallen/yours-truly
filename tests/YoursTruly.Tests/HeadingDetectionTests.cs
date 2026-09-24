@@ -44,6 +44,28 @@ public sealed class HeadingDetectionTests
         Assert.Contains("Birth Date", heading.Headings);
     }
 
+    /// <summary>A real export packs these headings closer together than two spaces:
+    /// "Birth Date" ends 3.8pt before "Phone Number" starts, on 8pt text where a space
+    /// is 2.2pt. Any fixed gap that keeps the columns apart splits "Birth Date" in
+    /// half, and any gap that keeps it whole runs the three columns into one — which is
+    /// what happened, and read as a single column called "Birth Date Phone Number
+    /// Email" over a file of 428 people that came back with 8 rows.</summary>
+    [Fact]
+    public void Tells_a_space_inside_a_heading_from_the_edge_of_a_column()
+    {
+        var packed = PdfLines.Of(8.0,
+            (54.1, 600, "Name"), (152.4, 600, "Gender"), (215.6, 600, "Age"),
+            (240.6, 600, "Birth Date"), (280.0, 600, "Phone Number"),
+            (337.0, 600, "Email"), (361.0, 600, "Current Unit"));
+
+        var heading = Headings.Detect(packed);
+
+        Assert.NotNull(heading);
+        Assert.Equal(
+            ["Name", "Gender", "Age", "Birth Date", "Phone Number", "Email", "Current Unit"],
+            heading.Headings);
+    }
+
     [Fact]
     public void A_line_naming_only_one_of_them_is_not_a_heading_row()
     {
