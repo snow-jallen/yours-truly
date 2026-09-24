@@ -208,6 +208,20 @@ public sealed partial class SetupViewModel : ObservableObject
     [ObservableProperty] private bool _emailOk;
     [ObservableProperty] private bool _emailBusy;
 
+    /// <summary>A passed test is a statement about the details that were in the boxes
+    /// when it ran. Change one and the statement stops being true, so it goes — along
+    /// with the message underneath, which names an address that may no longer be the
+    /// one in the box. Leaving either up is how a screen ends up saying "it works"
+    /// about something nobody has tried.</summary>
+    partial void OnEmailAddressChanged(string value) => ForgetEmailTest();
+    partial void OnAppPasswordChanged(string value) => ForgetEmailTest();
+
+    private void ForgetEmailTest()
+    {
+        EmailOk = false;
+        EmailStatus = "";
+    }
+
     // --- twilio ------------------------------------------------------------------
     [ObservableProperty] private string _accountSid;
     [ObservableProperty] private string _authToken;
@@ -281,7 +295,23 @@ public sealed partial class SetupViewModel : ObservableObject
             OnPropertyChanged(name);
     }
 
-    partial void OnMessagingServiceSidChanged(string value) => OnPropertyChanged(nameof(SendsRichText));
+    partial void OnMessagingServiceSidChanged(string value)
+    {
+        OnPropertyChanged(nameof(SendsRichText));
+        ForgetTwilioTest();
+    }
+
+    partial void OnAccountSidChanged(string value) => ForgetTwilioTest();
+    partial void OnAuthTokenChanged(string value) => ForgetTwilioTest();
+    partial void OnFromNumberChanged(string value) => ForgetTwilioTest();
+    partial void OnTestNumberChanged(string value) => ForgetTwilioTest();
+
+    /// <summary>Same again for the account the texts and calls go through.</summary>
+    private void ForgetTwilioTest()
+    {
+        TwilioOk = false;
+        TwilioStatus = "";
+    }
     [ObservableProperty] private string _twilioStatus = "";
     [ObservableProperty] private bool _twilioOk;
     [ObservableProperty] private bool _twilioBusy;

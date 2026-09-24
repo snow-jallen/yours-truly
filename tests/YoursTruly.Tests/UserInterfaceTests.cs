@@ -893,6 +893,52 @@ public sealed class UserInterfaceTests : IDisposable
         }, _folder);
 
     [Fact]
+    public Task Setup_offers_a_way_into_the_twilio_account() =>
+        InWindow(async (window, model) =>
+        {
+            model.ShowSetup();
+            Dispatcher.UIThread.RunJobs();
+            window.Measure(window.ClientSize);
+            window.Arrange(new Rect(window.ClientSize));
+
+            // A control that compiles but throws when it is realised would take the
+            // whole screen down, so this is as much about it existing as where it goes.
+            var link = Assert.Single(window.GetVisualDescendants().OfType<HyperlinkButton>());
+            Assert.Equal("console.twilio.com", link.NavigateUri?.Host);
+            Assert.Equal("Open the Twilio console", link.Content);
+            await Task.CompletedTask;
+        }, _folder);
+
+    [Fact]
+    public Task A_passed_test_stops_saying_so_once_the_details_change() =>
+        InWindow(async (_, model) =>
+        {
+            model.ShowSetup();
+            var setup = (SetupViewModel)model.Current;
+
+            // Stand in for a test that passed, which is all the badge and the message
+            // below it are: a statement about the details that were in the boxes.
+            setup.EmailAddress = "someone@example.com";
+            setup.EmailOk = true;
+            setup.EmailStatus = "Sent a test message to someone@example.com.";
+
+            setup.EmailAddress = "someone.else@example.com";
+
+            Assert.False(setup.EmailOk);
+            Assert.Equal("", setup.EmailStatus);
+
+            setup.AccountSid = "AC-a-fake-sid";
+            setup.TwilioOk = true;
+            setup.TwilioStatus = "Sent you a test text.";
+
+            setup.AuthToken = "something else";
+
+            Assert.False(setup.TwilioOk);
+            Assert.Equal("", setup.TwilioStatus);
+            await Task.CompletedTask;
+        }, _folder);
+
+    [Fact]
     public Task Setup_says_whether_it_needs_saving_without_anyone_scrolling_to_find_out() =>
         InWindow(async (window, model) =>
         {

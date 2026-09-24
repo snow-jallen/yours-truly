@@ -12,7 +12,7 @@
     <StackPanel Margin="28,26,28,20" MaxWidth="900" HorizontalAlignment="Stretch">
     <TextBlock Classes="h2" Text="Setup"/>
     <TextBlock Classes="lede" Margin="0,4,0,0"
-               Text="Your lists of people, and the accounts Yours Truly sends through. Each account has a Test button that sends a real message to you, so Working means it actually worked."/>
+               Text="Your lists of people, and the accounts Yours Truly sends through. Each account has a Test button that sends a real message to you, so it only says “it works” once it actually has. Change any of the details and it stops saying so until you test again."/>
 
     <!-- The lists. First, and the only card with a red edge: what it holds is the
          thing worth being careful with. -->
@@ -150,7 +150,7 @@
             </StackPanel>
             <Border Grid.Column="1" CornerRadius="20" Padding="10,4" VerticalAlignment="Center"
                     Background="{DynamicResource GoodSoft}" IsVisible="{Binding EmailOk}">
-              <TextBlock Text="Working" FontSize="12" FontWeight="SemiBold"
+              <TextBlock Text="It works" FontSize="12" FontWeight="SemiBold"
                          Foreground="{DynamicResource Good}"/>
             </Border>
           </Grid>
@@ -202,7 +202,7 @@
             </StackPanel>
             <Border Grid.Column="1" CornerRadius="20" Padding="10,4" VerticalAlignment="Center"
                     Background="{DynamicResource GoodSoft}" IsVisible="{Binding TwilioOk}">
-              <TextBlock Text="Working" FontSize="12" FontWeight="SemiBold"
+              <TextBlock Text="It works" FontSize="12" FontWeight="SemiBold"
                          Foreground="{DynamicResource Good}"/>
             </Border>
           </Grid>
@@ -226,6 +226,15 @@
               <TextBox Text="{Binding TestNumber}" Classes="mono" PlaceholderText="+14355550164"/>
             </StackPanel>
           </Grid>
+          <Border Background="{DynamicResource AccentSoft}" CornerRadius="8" Padding="12,10">
+            <StackPanel Spacing="8">
+              <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource AccentInk}"
+                         Text="The Account SID and Auth Token are both on the front page of the Twilio console, under Account info — the token is hidden until you ask to see it. Your Twilio number is one you have bought there, written in full with its country code. Your own mobile is where the Test buttons send, so you can check all of this without messaging anybody else."/>
+              <HyperlinkButton Content="Open the Twilio console" Padding="0" FontSize="12.5"
+                               NavigateUri="https://console.twilio.com"/>
+            </StackPanel>
+          </Border>
+
           <TextBlock Text="{Binding TwilioStatus}" TextWrapping="Wrap" FontSize="12.5"
                      Foreground="{DynamicResource Ink2}"/>
         </StackPanel>
