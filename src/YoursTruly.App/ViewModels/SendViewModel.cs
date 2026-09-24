@@ -172,6 +172,23 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
     [ObservableProperty] private string _costLine = "";
     [ObservableProperty] private string _costTotal = "$0.00";
     [ObservableProperty] private string _paceLine = "";
+
+    /// <summary>Gmail's daily limit, and how near this list is to it. Hidden entirely
+    /// when the account is not Gmail, because then Yours Truly has no idea what the
+    /// limit is and a made-up bar is worse than none.</summary>
+    [ObservableProperty] private bool _quotaShown;
+
+    [ObservableProperty] private string _quotaCount = "";
+    [ObservableProperty] private string _quotaDetail = "";
+    [ObservableProperty] private double _quotaFill;
+    [ObservableProperty] private string _quotaAdvice = "";
+    [ObservableProperty] private bool _quotaLoud;
+
+    /// <summary>E-mails this list has sent in the last 24 hours, re-counted on load and
+    /// after every send.</summary>
+    private int _emailsSentRecently;
+
+    private GmailQuota? _quota;
     [ObservableProperty] private string _unreachableLine = "";
     [ObservableProperty] private bool _anyUnreachable;
     [ObservableProperty] private string _sendLabel = "Send";
@@ -209,9 +226,17 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
 
     /// <summary>Refuses the send outright rather than letting every message fail one at
     /// a time — the saved route is an iPhone, and this is not a Mac.</summary>
+    /// <summary>True when texts on the chosen route have to be spaced out. Read once
+    /// here rather than in Summarise, which runs on every tick of the filters and has
+    /// no business touching the settings file that often.</summary>
+    private bool _paced = true;
+
     private void CheckRoute()
     {
         var settings = store.Load();
+        _paced = settings.TextVia.NeedsPacing();
+        _quota = GmailQuota.For(settings.EmailAs.Host, settings.EmailAs.Address);
+
         BlockedReason = settings.TextVia == TextTransport.MacMessages && !_isMac
             ? "Texts cannot go out from this computer: Yours Truly is set to send from your iPhone, which needs to run on a Mac. Open Setup and choose Twilio, or your Android phone."
             : "";
@@ -231,6 +256,7 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
         await using var db = services.Db();
         _all = await new DirectoryService(db).RecipientsAsync();
         await LoadGroupsAsync(db);
+        await CountRecentEmailAsync(db);
         Loaded = true;
         OnSpeakAloudChanged(SpeakAloud);
         CheckRoute();
@@ -542,9 +568,11 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
         var cost = TextCount * TextCost + VoiceCount * CallCost;
         CostTotal = cost.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("en-US"));
         CostLine = $"{TextCount} texts at $0.0079 · {VoiceCount} calls at about $0.014 · email is free.";
-        PaceLine = TextCount > 1
+        PaceLine = TextCount > 1 && _paced
             ? $"Texts go out 2 to 11 seconds apart, so {TextCount} of them take {TextPacing.Describe(TextPacing.Estimate(TextCount))}. Leave Yours Truly open until it says it has finished."
             : "";
+
+        ShowQuota();
 
         AnyUnreachable = summary.Unreachable.Count > 0;
         if (AnyUnreachable)
@@ -558,6 +586,29 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
 
         WillReceive = summary.WillReceive;
         SendLabel = summary.WillReceive == 1 ? "Send to 1 person" : $"Send to {summary.WillReceive} people";
+    }
+
+    /// <summary>Fills in the Gmail bar for the send as it currently stands.</summary>
+    private void ShowQuota()
+    {
+        QuotaShown = _quota is not null;
+        if (_quota is not { } quota) return;
+
+        var use = quota.After(_emailsSentRecently, EmailCount);
+        QuotaCount = use.Count();
+        QuotaDetail = use.Describe();
+        QuotaFill = use.Fill;
+        QuotaAdvice = use.Advise();
+        QuotaLoud = use.Pressure is not QuotaPressure.Fine;
+    }
+
+    /// <summary>Re-counts what has gone out in the last 24 hours. Cheap — one COUNT
+    /// over an indexed column — so it runs on load and after each send rather than
+    /// being cached and going stale while the window sits open.</summary>
+    private async Task CountRecentEmailAsync(AppDbContext db)
+    {
+        _emailsSentRecently = await SendingHistory.EmailsSentRecentlyAsync(db, DateTimeOffset.UtcNow);
+        ShowQuota();
     }
 
     [RelayCommand]
@@ -592,7 +643,7 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
             };
 
             await using var db = services.Db();
-            var service = new BroadcastService(db, senders);
+            var service = new BroadcastService(db, senders, paceTexts: settings.TextVia.NeedsPacing());
             var progress = new Progress<BroadcastProgress>(p => Status = p.NextTextIn is { } gap
                 ? $"Sending… {p.Done} of {p.Total}. Next text in {Math.Ceiling(gap.TotalSeconds):0} seconds — they go out a few seconds apart so your number is not flagged as spam."
                 : $"Sending… {p.Done} of {p.Total} ({p.Who})");
@@ -618,6 +669,8 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
             Status = $"Sent to {sent} {(sent == 1 ? "person" : "people")}."
                    + (failed > 0 ? $" {failed} failed." : "")
                    + (skipped > 0 ? $" {skipped} skipped." : "");
+
+            await CountRecentEmailAsync(db);
         }
         catch (Exception e)
         {

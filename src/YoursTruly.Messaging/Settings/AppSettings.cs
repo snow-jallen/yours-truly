@@ -62,6 +62,24 @@ public enum TextTransport
     AndroidGateway = 3,
 }
 
+public static class TextTransports
+{
+    /// <summary>Whether texts have to be spaced out on this route.
+    ///
+    /// Only for the two that send from the user's own phone number. A burst of identical
+    /// texts, seconds apart to the millisecond, is what carriers' spam filters look for,
+    /// and what they do about it is flag or block the number — the user's real number,
+    /// the one their family calls them on. The gaps are worth the wait for that.
+    ///
+    /// Twilio is a different thing entirely. The number is rented for the purpose,
+    /// Twilio queues and paces sends itself against the carrier limits for that number,
+    /// and its whole business is sending in volume. Adding gaps on top buys nothing and
+    /// costs real time: 400 texts at an average 6.5 seconds apart is three quarters of
+    /// an hour with the app pinned open, against a couple of minutes without.</summary>
+    public static bool NeedsPacing(this TextTransport transport) =>
+        transport is not TextTransport.Twilio;
+}
+
 /// <summary>The SMS Gateway app running on the user's Android phone, in local-server
 /// mode — the phone answers on the home network and nothing leaves it for anyone
 /// else's server, which matters when the payload is 427 people's phone numbers.</summary>

@@ -47,7 +47,20 @@ public sealed class ScreenshotHarness(ITestOutputHelper output) : IDisposable
         await SeedAsync(services);
 
         var store = new SettingsStore(services.SettingsPath);
-        store.Save(store.Load() with { Signature = "Jonathan Allen, Thunder FC" });
+        // An e-mail account too, so the Gmail quota bar is in the picture. It only
+        // appears once there is an address to have a limit, and a panel nobody
+        // photographs is a panel nobody notices is laid out wrongly — this one first
+        // went out with its label and its number drawn on top of each other.
+        store.Save(store.Load() with
+        {
+            Signature = "Jonathan Allen, Thunder FC",
+            Email = new YoursTruly.Messaging.Settings.EmailSettings
+            {
+                Address = "jonathan@example.com",
+                AppPassword = "xxxx xxxx xxxx xxxx",
+                DisplayName = "Jonathan Allen",
+            },
+        });
 
         var window = new YoursTruly.App.Views.MainWindow(services);
         window.Width = 1400;

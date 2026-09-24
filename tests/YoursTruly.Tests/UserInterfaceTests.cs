@@ -589,6 +589,127 @@ public sealed class UserInterfaceTests : IDisposable
             Assert.Equal("JONATHAN ALLEN", model.SenderLabel);
         }, _folder);
 
+    [Fact]
+    public Task The_send_screen_shows_how_much_of_gmails_daily_limit_is_left() =>
+        InWindow(async (window, model) =>
+        {
+            var services = AppServices.Start(
+                Path.Combine(_folder, "contacts.db"), Path.Combine(_folder, "settings.json"));
+            await SeedOneAsync(services);
+
+            var store = new SettingsStore(services.SettingsPath);
+            store.Save(store.Load() with
+            {
+                Email = new EmailSettings { Address = "me@gmail.com", AppPassword = "xxxx xxxx xxxx xxxx" },
+            });
+
+            // 480 already gone out in the last hour, against a free account's 500.
+            await using (var db = services.Db())
+            {
+                var person = await db.People.FirstAsync();
+                var batch = new YoursTruly.Data.Entities.MessageBatch
+                {
+                    Body = "earlier", AudienceDescription = "Everyone (480)",
+                };
+                for (var i = 0; i < 480; i++)
+                    batch.Deliveries.Add(new YoursTruly.Data.Entities.MessageDelivery
+                    {
+                        PersonId = person.Id,
+                        Channel = Channel.Email,
+                        Address = "a.ashgrove@example.com",
+                        Status = YoursTruly.Data.Entities.DeliveryStatus.Sent,
+                        SentAt = DateTimeOffset.UtcNow.AddHours(-1),
+                    });
+                db.MessageBatches.Add(batch);
+                await db.SaveChangesAsync();
+            }
+
+            await model.ShowSendAsync();
+            var send = (SendViewModel)model.Current;
+
+            Assert.True(send.QuotaShown);
+            Assert.Equal("480 of 500", send.QuotaCount);
+            // Loud, because 480 of 500 is close enough that the next send may not fit.
+            // The over-the-limit wording is covered in GmailQuotaTests, which does not
+            // need 500 seeded deliveries to get there.
+            Assert.True(send.QuotaLoud);
+            Assert.Contains("most of what Gmail allows", send.QuotaAdvice, StringComparison.Ordinal);
+            Assert.InRange(send.QuotaFill, 0.96, 1.0);
+
+            // On screen, not merely on the view model — a warning inside a collapsed
+            // ancestor protects nobody.
+            Dispatcher.UIThread.RunJobs();
+            window.Measure(window.ClientSize);
+            window.Arrange(new Rect(window.ClientSize));
+
+            var shown = window.GetVisualDescendants().OfType<TextBlock>()
+                .Where(OnScreen).Select(t => t.Text ?? "").ToList();
+            Assert.Contains(shown, t => t.Contains("480 of 500", StringComparison.Ordinal));
+        }, _folder);
+
+    [Fact]
+    public Task A_send_from_a_provider_with_no_known_limit_says_nothing_about_quotas() =>
+        InWindow(async (_, model) =>
+        {
+            var store = new SettingsStore(Path.Combine(_folder, "settings.json"));
+            store.Save(store.Load() with
+            {
+                Email = new EmailSettings
+                {
+                    Address = "me@fastmail.com", AppPassword = "x", Host = "smtp.fastmail.com",
+                },
+            });
+
+            await model.ShowSendAsync();
+            Assert.False(((SendViewModel)model.Current).QuotaShown);
+        }, _folder);
+
+    [Theory]
+    [InlineData(TextTransport.Twilio, false)]
+    [InlineData(TextTransport.AndroidGateway, true)]
+    public Task The_wait_between_texts_is_only_mentioned_when_there_is_one(
+        TextTransport via, bool paced) =>
+        InWindow(async (_, model) =>
+        {
+            var services = AppServices.Start(
+                Path.Combine(_folder, "contacts.db"), Path.Combine(_folder, "settings.json"));
+            await SeedOneAsync(services);
+            await SeedTextableAsync(services, "Quilley", "+14355550122");
+            await SeedTextableAsync(services, "Winslade", "+14355550133");
+
+            var store = new SettingsStore(services.SettingsPath);
+            store.Save(store.Load() with { TextVia = via });
+
+            await model.ShowSendAsync();
+            var send = (SendViewModel)model.Current;
+            send.SendVia = "Everyone by text";
+
+            Assert.True(send.TextCount > 1, "the fixture needs more than one text for a gap to exist");
+            Assert.Equal(paced, send.PaceLine.Length > 0);
+        }, _folder);
+
+    /// <summary>Somebody who can be texted, for the pacing tests.</summary>
+    private static async Task SeedTextableAsync(AppServices services, string last, string phone)
+    {
+        await using var db = services.Db();
+        var person = new YoursTruly.Data.Entities.Person
+        {
+            LastName = last, FirstName = "Someone", DisplayName = $"{last}, Someone",
+            ImportedPhone = phone,
+            FirstSeenOn = new DateOnly(2026, 9, 16), LastSeenOn = new DateOnly(2026, 9, 16),
+            PreferredChannels = ChannelSet.Of(Channel.Text),
+        };
+        person.ContactPoints.Add(new YoursTruly.Data.Entities.ContactPoint
+        {
+            PersonId = person.Id,
+            Kind = YoursTruly.Data.Entities.ContactKind.Phone,
+            Value = phone,
+            Normalized = phone,
+        });
+        db.People.Add(person);
+        await db.SaveChangesAsync();
+    }
+
     /// <summary>Seeds one person so the list screens have something to show.</summary>
     private static async Task<Guid> SeedOneAsync(AppServices services)
     {

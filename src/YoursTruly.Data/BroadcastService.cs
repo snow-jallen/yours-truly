@@ -12,14 +12,20 @@ public sealed record BroadcastProgress(int Done, int Total, string Who, TimeSpan
 /// <summary>Sends one message to a chosen set of people and writes down what happened
 /// to each of them, on each channel they asked for.
 ///
-/// Texts are spaced out by <see cref="TextPacing"/>; e-mails and calls are not.
+/// Texts are spaced out by <see cref="TextPacing"/> when <paramref name="paceTexts"/>
+/// says so; e-mails and calls never are. The caller decides, because the reason for the
+/// gaps is the route rather than the channel — see TextTransports.NeedsPacing. It
+/// defaults to true so that a caller who forgets errs towards protecting a real phone
+/// number rather than towards hammering it.
+///
 /// <paramref name="wait"/> and <paramref name="random"/> exist for the tests, which
 /// should neither sleep nor depend on luck.</summary>
 public sealed class BroadcastService(
     AppDbContext db,
     IReadOnlyDictionary<Channel, IMessageSender> senders,
     Func<TimeSpan, CancellationToken, Task>? wait = null,
-    Random? random = null)
+    Random? random = null,
+    bool paceTexts = true)
 {
     private readonly Func<TimeSpan, CancellationToken, Task> _wait = wait ?? Task.Delay;
     private readonly Random _random = random ?? Random.Shared;
@@ -87,7 +93,7 @@ public sealed class BroadcastService(
                 {
                     // Only between texts that actually go to the provider: a skipped
                     // person sends nothing, so there is nothing to space out from.
-                    if (reach.Channel is Channel.Text)
+                    if (reach.Channel is Channel.Text && paceTexts)
                     {
                         if (textedAlready)
                         {

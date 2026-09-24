@@ -2,6 +2,7 @@ using YoursTruly.Core.Domain;
 using YoursTruly.Data;
 using YoursTruly.Data.Entities;
 using YoursTruly.Messaging;
+using YoursTruly.Messaging.Settings;
 using Microsoft.EntityFrameworkCore;
 
 namespace YoursTruly.Tests;
@@ -213,6 +214,40 @@ public sealed class BroadcastServiceTests : IDisposable
         Assert.Equal(5, clock.Gaps.Count);
         Assert.All(clock.Gaps, g => Assert.InRange(g, TextPacing.Shortest, TextPacing.Longest));
         Assert.True(clock.Gaps.Distinct().Count() > 1, "every gap was the same length, which is the pattern to avoid");
+    }
+
+    [Fact]
+    public async Task Twilio_sends_every_text_at_once()
+    {
+        // The gaps exist to keep a carrier from flagging the user's own phone number.
+        // A Twilio number is rented for the purpose and Twilio paces its own sending,
+        // so waiting buys nothing and costs the user the whole send: six texts is under
+        // a minute of waiting, but a directory of four hundred is three quarters of an
+        // hour with the window pinned open.
+        using var db = Open();
+        var text = new FakeSender(Channel.Text);
+        var clock = new Stopwatch();
+        var service = new BroadcastService(db,
+            new Dictionary<Channel, IMessageSender> { [Channel.Text] = text },
+            clock.Wait, paceTexts: false);
+
+        var people = new List<Recipient>();
+        for (var i = 0; i < 6; i++) people.Add(await PersonAsync(db, $"Text{i}", Channel.Text));
+        await service.SendAsync("", "Friday", "Everyone (6)", people);
+
+        Assert.Equal(6, text.SentTo.Count);
+        Assert.Empty(clock.Gaps);
+    }
+
+    [Fact]
+    public void Pacing_is_a_property_of_the_route_and_defaults_to_on()
+    {
+        // Twilio is the only route that does not need it; the other two send from the
+        // user's real number. A route added later gets pacing until somebody decides
+        // otherwise, which is the safe way round.
+        Assert.False(TextTransport.Twilio.NeedsPacing());
+        Assert.True(TextTransport.MacMessages.NeedsPacing());
+        Assert.True(TextTransport.AndroidGateway.NeedsPacing());
     }
 
     [Fact]

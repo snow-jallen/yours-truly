@@ -100,6 +100,28 @@ build rather than the user. If you drop a genuine export in
 check that every person the file's own footer counts comes back with a readable name,
 phone, e-mail and birthday.
 
+## Gmail's daily limit
+
+Gmail will not slow you down as you approach its cap. It refuses outright, and then
+refuses everything else for up to 24 hours — so a send can break off two thirds of the
+way through a list with no obvious way to find out why.
+
+So the Send screen carries a small bar: how many e-mails have gone out in the last 24
+hours, against what the account is allowed. Google publishes two numbers —
+[500 a day for a free account](https://support.google.com/mail/answer/22839) and
+[2,000 for Google Workspace](https://knowledge.workspace.google.com/admin/gmail/gmail-sending-limits-in-google-workspace)
+— and which applies is read off your address, since a free account is always at
+gmail.com and a Workspace account always has a domain of its own. Past four fifths of
+the limit it says so; past the limit it says how many will still fit and stops offering
+to send.
+
+Two things it cannot know. The window is a rolling 24 hours rather than a calendar day,
+which is in its favour — the room comes back gradually instead of at midnight. But it
+counts only what **this list** has sent: mail from the same account in another list, or
+in Gmail in a browser, counts against the same quota and is invisible from here. Treat
+the number as a floor. If you send from something that is not Gmail, the bar does not
+appear at all, because a made-up limit shown confidently is worse than none.
+
 ## Sending as yourself
 
 Yours Truly is one person's tool. It is not an organisation's system and should not look
@@ -135,9 +157,16 @@ Forwarding switched on for that Mac, and macOS will ask once for permission to c
 Messages.
 
 The catch, for both phones, is that a personal line is meant for person-to-person
-texting. A burst of hundreds is exactly what carrier spam systems look for, and it goes
-out at roughly one message every two seconds. **Keep it to a few dozen** — a team, a
+texting. A burst of hundreds is exactly what carrier spam systems look for, and what
+they do about it is flag or block the number — your real one. So on those two routes
+Yours Truly leaves a random 2-to-11-second gap between texts, which means a hundred of
+them take about ten minutes with the window open. **Keep it to a few dozen** — a team, a
 committee, the people who did not reply — and use Twilio for a whole directory.
+
+**Twilio texts go out with no gaps at all.** The number is rented for the purpose,
+Twilio paces its own sending against the carrier limits, and its whole business is
+volume. Waiting would buy nothing and cost the evening: four hundred texts would be
+three quarters of an hour of sitting there.
 
 **Through a service, no.** Verify your mobile in the Twilio console as a caller ID and outgoing
 calls show *your* number. People see you ringing, and returning the call reaches you

@@ -110,6 +110,24 @@ Notes never appear there. A note is nobody else's business.
   none of them is taught to the reader; a sixth that fails means the general rule is
   wrong. See docs/architecture.md.
 
+## Sending rules
+
+- **Pacing belongs to the route, not the channel.** The 2-to-11-second gaps exist to
+  stop a carrier flagging the user's *own* phone number, so they apply to Mac Messages
+  and the Android gateway and not to Twilio, which paces itself. `TextTransports
+  .NeedsPacing` is the one place that says so; `BroadcastService` takes it as
+  `paceTexts` and defaults to true, so a route added later is protected until somebody
+  decides otherwise.
+- **Gmail's quota numbers come from Google and nowhere else.** 500 a day free, 2,000 on
+  Workspace, over a rolling 24 hours. `GmailQuotaTests` pins them and `GmailQuota` holds
+  the links. If a number looks stale, check Google — do not adjust it to match
+  observation.
+- The quota bar counts only this list's sends and **says so on screen**. It is a floor,
+  not a measurement, and must never be presented as the latter.
+- One recipient per message, always. It is what stops 427 people seeing each other's
+  addresses, and it is why the message count rather than the recipient count is the
+  limit that runs out. Do not batch recipients to save quota.
+
 ## Schema
 
 - Enums stored by name, never by number. A set of them is stored as its names joined by

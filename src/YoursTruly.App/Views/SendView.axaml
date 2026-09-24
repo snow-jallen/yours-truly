@@ -265,6 +265,34 @@
             <TextBlock Text="{Binding PaceLine}" FontSize="11.5" TextWrapping="Wrap"
                        Foreground="{DynamicResource Ink3}" IsVisible="{Binding PaceLine.Length}"/>
 
+            <!-- Gmail's daily limit. IsVisible on the Border, never on the content:
+                 on the content the box still paints its background and padding and
+                 you get an empty panel. -->
+            <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0"
+                    Padding="0,11,0,0" IsVisible="{Binding QuotaShown}">
+              <StackPanel Spacing="6">
+                <!-- Auto for the label and * for the number, so the number is what
+                     right-aligns and the label cannot run underneath it. The other way
+                     round, a long count overlapped the label. -->
+                <Grid ColumnDefinitions="Auto,*">
+                  <TextBlock Grid.Column="0" Text="Gmail's daily limit" FontSize="12"
+                             Foreground="{DynamicResource Ink3}" VerticalAlignment="Center"/>
+                  <TextBlock Grid.Column="1" Text="{Binding QuotaCount}" Classes="mono" FontSize="12"
+                             HorizontalAlignment="Right" VerticalAlignment="Center"
+                             Foreground="{DynamicResource Ink}"/>
+                </Grid>
+                <ProgressBar Minimum="0" Maximum="1" Value="{Binding QuotaFill}" Height="6"
+                             CornerRadius="3" Background="{DynamicResource Line}"
+                             Foreground="{DynamicResource ChEmail}"/>
+                <TextBlock Text="{Binding QuotaDetail}" FontSize="11.5" TextWrapping="Wrap"
+                           Foreground="{DynamicResource Ink3}"/>
+                <TextBlock Text="{Binding QuotaAdvice}" FontSize="11.5" TextWrapping="Wrap"
+                           Foreground="{DynamicResource Warn}" IsVisible="{Binding QuotaLoud}"/>
+                <TextBlock FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource Ink3}"
+                           Text="Only what this list sent — mail from the same account elsewhere counts too."/>
+              </StackPanel>
+            </Border>
+
             <Border Classes="notice privacy" IsVisible="{Binding AnyUnreachable}">
               <TextBlock Text="{Binding UnreachableLine}" FontSize="12" TextWrapping="Wrap"
                          Foreground="{DynamicResource Ink2}"/>
