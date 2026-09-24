@@ -71,21 +71,20 @@
         <!-- Selection bar + list -->
         <Border Grid.Row="1" Background="{DynamicResource AccentSoft}" CornerRadius="9,9,0,0" Padding="13,9"
                 BorderBrush="{DynamicResource Line}" BorderThickness="1,1,1,0">
-          <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
-            <Button Grid.Column="0" Content="Select all" Padding="10,3" FontSize="12.5"
+          <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
+            <Button Content="Select all" Padding="10,3" FontSize="12.5"
                     Command="{Binding SelectAllCommand}"/>
-            <Button Grid.Column="1" Content="Clear selection" Padding="10,3" FontSize="12.5"
-                    Margin="7,0,0,0" Command="{Binding SelectNoneCommand}"/>
-            <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="7" Margin="0,0,14,0"
-                        VerticalAlignment="Center">
+            <Button Content="Clear selection" Padding="10,3" FontSize="12.5"
+                    Command="{Binding SelectNoneCommand}"/>
+            <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
               <TextBlock Text="Send" VerticalAlignment="Center" FontSize="12.5"
                          Foreground="{DynamicResource AccentInk}"/>
               <ComboBox MinWidth="200" ItemsSource="{Binding SendViaOptions}"
                         SelectedItem="{Binding SendVia}"/>
             </StackPanel>
-            <TextBlock Grid.Column="4" Text="{Binding SelectedLine}" FontWeight="SemiBold"
+            <TextBlock Text="{Binding SelectedLine}" FontWeight="SemiBold"
                        VerticalAlignment="Center" Foreground="{DynamicResource AccentInk}"/>
-          </Grid>
+          </WrapPanel>
         </Border>
 
         <Border Grid.Row="2" Classes="card" CornerRadius="0,0,9,9" Padding="0" ClipToBounds="True">
@@ -108,7 +107,7 @@
               </Grid>
             </Border>
             <ScrollViewer Grid.Row="1" Name="RecipientScroller" MinHeight="170"
-                          VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                          VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled">
               <ItemsControl ItemsSource="{Binding Rows}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:SendRow">
@@ -135,13 +134,14 @@
                           <Button Classes="chip last voice" Classes.on="{Binding IsVoice}"
                                   Content="Call" Command="{Binding ChooseVoiceCommand}"/>
                         </StackPanel>
-                        <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="5"
-                                    VerticalAlignment="Center">
-                          <TextBlock Text="&#x26A0;" FontSize="12" IsVisible="{Binding !CanReceive}"
+                        <Grid Grid.Column="5" ColumnDefinitions="Auto,*" ColumnSpacing="5">
+                          <TextBlock Grid.Column="0" Text="&#x26A0;" FontSize="12"
+                                     IsVisible="{Binding !CanReceive}"
                                      Foreground="{DynamicResource Crit}" VerticalAlignment="Center"/>
-                          <TextBlock Text="{Binding GoesTo}" Classes="mono"
+                          <TextBlock Grid.Column="1" Text="{Binding GoesTo}" Classes="mono"
+                                     ToolTip.Tip="{Binding GoesTo}"
                                      TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                        </StackPanel>
+                        </Grid>
                       </Grid>
                     </Border>
                   </DataTemplate>
@@ -156,8 +156,7 @@
 
       <!-- What to say -->
       <ScrollViewer Grid.Column="1" Name="ComposeScroller"
-                    VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Spacing="14">
+                    VerticalScrollBarVisibility="Visible" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Spacing="14">
           <StackPanel Spacing="6">
             <TextBlock Classes="eyebrow" Text="SUBJECT — EMAIL ONLY"/>
@@ -190,10 +189,14 @@
             <StackPanel Spacing="9">
               <TextBlock Classes="eyebrow" Text="WHAT THE CALLS WILL PLAY"
                          Foreground="{DynamicResource ChVoice}"/>
-              <RadioButton GroupName="voicemode" IsChecked="{Binding SpeakAloud}" FontSize="13"
-                           Content="Read the message out — nothing to record, ready now"/>
-              <RadioButton GroupName="voicemode" IsChecked="{Binding UseMyVoice}" FontSize="13"
-                           Content="In my own voice — Yours Truly rings you, you read it off the screen"/>
+              <RadioButton GroupName="voicemode" IsChecked="{Binding SpeakAloud}" FontSize="13">
+                <TextBlock TextWrapping="Wrap"
+                           Text="Read the message out — nothing to record, ready now"/>
+              </RadioButton>
+              <RadioButton GroupName="voicemode" IsChecked="{Binding UseMyVoice}" FontSize="13">
+                <TextBlock TextWrapping="Wrap"
+                           Text="In my own voice — Yours Truly rings you, you read it off the screen"/>
+              </RadioButton>
               <StackPanel Orientation="Horizontal" Spacing="9">
                 <Button Content="Record it now" Command="{Binding RecordVoiceCommand}"
                         IsEnabled="{Binding !VoiceBusy}" IsVisible="{Binding UseMyVoice}"/>
@@ -214,14 +217,15 @@
             <TextBlock Text="{Binding BlockedReason}" TextWrapping="Wrap" FontSize="12.5"
                        Foreground="{DynamicResource Ink2}"/>
           </Border>
-          <StackPanel Orientation="Horizontal" Spacing="9">
-            <Button Classes="primary" Content="{Binding SendLabel}"
-                    Command="{Binding SendCommand}" IsEnabled="{Binding !Sending}"
-                    IsVisible="{Binding !IsBlocked}"/>
+          <StackPanel Spacing="6" IsVisible="{Binding !IsBlocked}">
+            <Button Classes="primary" Content="{Binding SendLabel}" HorizontalAlignment="Left"
+                    Command="{Binding SendCommand}" IsEnabled="{Binding CanSend}"/>
+            <TextBlock Text="{Binding WhyNotSending}" FontSize="12" TextWrapping="Wrap"
+                       Foreground="{DynamicResource Ink3}"
+                       IsVisible="{Binding WhyNotSending, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
           </StackPanel>
           <TextBlock Text="{Binding Status}" TextWrapping="Wrap" FontSize="12.5"
                      Foreground="{DynamicResource Ink2}"/>
-        </StackPanel>
 
         <Border Background="{DynamicResource Surface2}" CornerRadius="9"
                 BorderBrush="{DynamicResource Line}" BorderThickness="1" Padding="14"

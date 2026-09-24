@@ -140,9 +140,12 @@
                      PlaceholderText="Or start a new group"/>
           </StackPanel>
 
-          <Border Background="{DynamicResource AccentSoft}" CornerRadius="8" Padding="11,9">
+          <!-- The visibility belongs on the box, not on the words inside it. Put on the
+               words, the box still paints its background and its padding, and adding
+               somebody showed an empty purple bar above the note that did apply. -->
+          <Border Background="{DynamicResource AccentSoft}" CornerRadius="8" Padding="11,9"
+                  IsVisible="{Binding !IsNew}">
             <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource AccentInk}"
-                       IsVisible="{Binding !IsNew}"
                        Text="Anything you change here is kept through the next import — Yours Truly records the correction rather than writing over what the file said — and is listed on “Changes since import”, so you can put it back into wherever your list comes from. The note stays here and goes nowhere."/>
           </Border>
           <Border Background="{DynamicResource AccentSoft}" CornerRadius="8" Padding="11,9"

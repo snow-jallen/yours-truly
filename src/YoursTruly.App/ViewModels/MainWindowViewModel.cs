@@ -31,6 +31,11 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private object _current;
     [ObservableProperty] private string _senderLabel;
 
+    /// <summary>Whether anything has been typed in that the imported file does not
+    /// carry. The rail only offers that screen when it has something on it: a permanent
+    /// entry leading to "nothing has changed" is a place you learn to stop looking.</summary>
+    [ObservableProperty] private bool _hasChanges;
+
     // --- which list is open ----------------------------------------------------------
     [ObservableProperty] private IReadOnlyList<ListChoice> _lists = [];
     [ObservableProperty] private string _listStatus = "";
@@ -52,10 +57,57 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// restart button only then, so the rest of the time it looks exactly as it did.</summary>
     [ObservableProperty] private bool _updateReady;
 
-    /// <summary>What is waiting, under the restart button — knowing which version you
-    /// are about to install is worth a line of chrome. Composed here rather than in
+    /// <summary>What the update button last had to say. Composed here rather than in
     /// the rail, because views do not compute.</summary>
     [ObservableProperty] private string _updateCaption = "";
+
+    [ObservableProperty] private bool _updateBusy;
+
+    [ObservableProperty] private string _updateVersion = "";
+
+    /// <summary>One button, two jobs: look for an update, and once one is waiting,
+    /// install it. Naming the version on it means nobody has to go to Setup to find out
+    /// what they are about to restart into.</summary>
+    public string UpdateButton =>
+        UpdateReady ? $"Restart & install {UpdateVersion}" : "Check for updates";
+
+    partial void OnUpdateReadyChanged(bool value) => OnPropertyChanged(nameof(UpdateButton));
+    partial void OnUpdateVersionChanged(string value) => OnPropertyChanged(nameof(UpdateButton));
+
+    /// <summary>The button on the rail. Unlike the quiet check at start-up, somebody
+    /// asked, so every outcome is reported — including being run from a build folder,
+    /// where there is nothing to replace.</summary>
+    [RelayCommand]
+    private async Task UpdateAsync()
+    {
+        if (UpdateReady) { _updates.ApplyAndRestart(); return; }
+
+        UpdateBusy = true;
+        UpdateCaption = "Looking…";
+        try
+        {
+            if (!_updates.Installed)
+            {
+                UpdateCaption = "Running from a build folder — nothing to update.";
+                return;
+            }
+
+            var found = await _updates.CheckAsync();
+            if (found.Version is null) { UpdateCaption = "You have the newest version."; return; }
+
+            UpdateCaption = $"Downloading {found.Version}…";
+            var ready = await _updates.DownloadAsync();
+            UpdateVersion = ready.Version ?? found.Version;
+            UpdateReady = ready.UpdateReady;
+            UpdateCaption = ready.UpdateReady ? $"Version {UpdateVersion} is ready" : ready.Message;
+        }
+        catch (Exception failure)
+        {
+            Log.Failure("update.check", failure);
+            UpdateCaption = "Could not check just now.";
+        }
+        finally { UpdateBusy = false; }
+    }
 
     /// <summary>Looks for a newer the app and fetches it in the background, leaving the
     /// user nothing to do but restart when it suits them.
@@ -76,7 +128,8 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var ready = await _updates.DownloadAsync();
             if (!ready.UpdateReady) return;
 
-            UpdateCaption = $"Version {ready.Version ?? found.Version} ready";
+            UpdateVersion = ready.Version ?? found.Version;
+            UpdateCaption = $"Version {UpdateVersion} is ready";
             UpdateReady = true;
         }
         catch (Exception failure)
@@ -218,11 +271,30 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (ShowNoList()) return;
         Current = _people;
         await _people.LoadAsync();
+        await RefreshChangesAsync();
     }
 
     /// <summary>Puts the "no list open" screen up instead, and says so. Every screen
     /// that reads a list goes through here, so none of them needs an empty state of its
     /// own and none of them can reach a database that is not there.</summary>
+    /// <summary>Counts what is waiting on the changes screen, so the rail knows whether
+    /// to offer it. Cheap, indexed, and run whenever a screen opens — an edit made on
+    /// People has to show up on the rail without anything having to notify anything.</summary>
+    private async Task RefreshChangesAsync()
+    {
+        if (!_services.HasList) { HasChanges = false; return; }
+        try
+        {
+            await using var db = _services.Db();
+            HasChanges = (await new DirectoryService(db).CorrectionsAsync()).Count > 0;
+        }
+        catch (Exception failure)
+        {
+            Log.Failure("changes.count", failure);
+            HasChanges = false;
+        }
+    }
+
     private bool ShowNoList()
     {
         if (_services.HasList) return false;
@@ -278,6 +350,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (ShowNoList()) return;
         Current = _groups;
         await _groups.LoadAsync();
+        await RefreshChangesAsync();
     }
 
     /// <summary>From the Groups screen: Send, showing that group with everyone ticked.</summary>
@@ -304,6 +377,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (ShowNoList()) return;
         Current = _send;
         await _send.LoadAsync();
+        await RefreshChangesAsync();
     }
 
     public async Task ShowChangesAsync()
@@ -313,6 +387,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (ShowNoList()) return;
         Current = _changes;
         await _changes.LoadAsync();
+        await RefreshChangesAsync();
     }
 
     public async Task ShowHistoryAsync()
@@ -322,6 +397,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         if (ShowNoList()) return;
         Current = _history;
         await _history.LoadAsync();
+        await RefreshChangesAsync();
     }
 
     public void ShowSetup()

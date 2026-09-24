@@ -83,20 +83,20 @@
           </StackPanel>
         </Border>
 
-        <!-- Declared after the directory block so it docks above it: a DockPanel
-             stacks bottom-docked children outward in. Hidden until an update has
-             actually been downloaded, so the rail is otherwise unchanged.
+        <!-- Declared after the list block so it docks above it: a DockPanel stacks
+             bottom-docked children outward in.
 
-             Deliberately the plain button rather than the accent one: this is worth
-             noticing, not worth shouting over the directory it sits above. -->
-        <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="6,10,6,0"
-                    IsVisible="{Binding UpdateReady}">
-          <Button Content="Restart to apply update"
-                  Command="{Binding RestartToUpdateCommand}"
+             One button doing both jobs — look for an update, then install the one it
+             found. Deliberately the plain button rather than the accent one: worth
+             noticing, not worth shouting over the list it sits above. -->
+        <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="6,10,6,0">
+          <Button Content="{Binding UpdateButton}" Command="{Binding UpdateCommand}"
+                  IsEnabled="{Binding !UpdateBusy}" FontSize="12"
                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
           <TextBlock Text="{Binding UpdateCaption}" FontSize="10.5"
                      Foreground="{DynamicResource Ink3}"
-                     HorizontalAlignment="Center" TextWrapping="Wrap"/>
+                     HorizontalAlignment="Center" TextWrapping="Wrap"
+                     IsVisible="{Binding UpdateCaption, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
         </StackPanel>
 
         <StackPanel Spacing="2">
@@ -104,9 +104,11 @@
                        Click="OnPeople"/>
           <RadioButton Name="NavGroups" Classes="nav" GroupName="nav" Content="Groups" Click="OnGroups"/>
           <RadioButton Name="NavSend" Classes="nav" GroupName="nav" Content="Send a message" Click="OnSend"/>
+          <!-- Only offered when it has something on it. A permanent entry that usually
+               says "nothing has changed" is one you learn to stop looking at. -->
           <RadioButton Name="NavChanges" Classes="nav" GroupName="nav" Content="Changes since import"
-                       Click="OnChanges"/>
-          <RadioButton Name="NavHistory" Classes="nav" GroupName="nav" Content="What you have sent" Click="OnHistory"/>
+                       IsVisible="{Binding HasChanges}" Click="OnChanges"/>
+          <RadioButton Name="NavHistory" Classes="nav" GroupName="nav" Content="Sent Messages" Click="OnHistory"/>
           <RadioButton Name="NavSetup" Classes="nav" GroupName="nav" Content="Setup" Click="OnSetup"/>
         </StackPanel>
       </DockPanel>

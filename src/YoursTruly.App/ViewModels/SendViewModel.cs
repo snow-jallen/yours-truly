@@ -73,8 +73,9 @@ public sealed partial class SendRow : ObservableObject
             var going = AsChosen.Deliveries;
             return going.Count == 0
                 ? Problem
-                : string.Join(", ", going.Select(r =>
-                    r.Channel is Channel.Email ? r.Address! : PhoneFormat.ForDisplay(r.Address)));
+                : string.Join(", ", going
+                    .Select(r => r.Channel is Channel.Email ? r.Address! : PhoneFormat.ForDisplay(r.Address))
+                    .Distinct());
         }
     }
 
@@ -174,6 +175,29 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
     [ObservableProperty] private string _unreachableLine = "";
     [ObservableProperty] private bool _anyUnreachable;
     [ObservableProperty] private string _sendLabel = "Send";
+
+    /// <summary>How many of the ticked people a message would actually reach. Kept
+    /// beside the label rather than inside it, because the button needs to know too.</summary>
+    [ObservableProperty] private int _willReceive;
+
+    /// <summary>Pressing Send with an empty message used to do nothing at all — the
+    /// send returned on its first line and left the button looking as though it had
+    /// been ignored. It is disabled now, and says which of the two things is missing.</summary>
+    public bool CanSend => !Sending && Body.Trim().Length > 0 && WillReceive > 0;
+
+    public string WhyNotSending =>
+        CanSend || Sending ? ""
+        : Body.Trim().Length == 0 ? "Write the message first."
+        : "Nobody ticked can be reached, so there is nothing to send.";
+
+    partial void OnWillReceiveChanged(int value) => RefreshCanSend();
+    partial void OnSendingChanged(bool value) => RefreshCanSend();
+
+    private void RefreshCanSend()
+    {
+        OnPropertyChanged(nameof(CanSend));
+        OnPropertyChanged(nameof(WhyNotSending));
+    }
     [ObservableProperty] private string _status = "";
     [ObservableProperty] private bool _sending;
     [ObservableProperty] private bool _loaded;
@@ -320,10 +344,16 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
             ? $"Signed \u2014 {signature.Split('\n')[0]}"
             : "Nobody has said who these messages are from. Write a signature on the Setup screen.";
 
+        // Nothing typed is not a ten-character message; it is no message. Counting the
+        // signature on its own reads as though something is already written.
         var segments = Signature.TextSegments(Signed);
-        LengthLine = segments <= 1
-            ? $"{Signed.Length} characters \u2014 fits in one text message."
-            : $"{Signed.Length} characters \u2014 sends as {segments} text segments, billed separately.";
+        LengthLine = Body.Trim().Length == 0
+            ? ""
+            : segments <= 1
+                ? $"{Signed.Length} characters \u2014 fits in one text message."
+                : $"{Signed.Length} characters \u2014 sends as {segments} text segments, billed separately.";
+
+        RefreshCanSend();
     }
 
     partial void OnSearchChanged(string value) => Refresh();
@@ -526,6 +556,7 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
                 $"no way to receive this — {string.Join(", ", names)}{more}. They will be skipped and listed afterwards.";
         }
 
+        WillReceive = summary.WillReceive;
         SendLabel = summary.WillReceive == 1 ? "Send to 1 person" : $"Send to {summary.WillReceive} people";
     }
 

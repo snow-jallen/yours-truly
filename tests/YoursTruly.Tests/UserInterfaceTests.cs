@@ -289,9 +289,10 @@ public sealed class UserInterfaceTests : IDisposable
             window.Measure(window.ClientSize);
             window.Arrange(new Rect(window.ClientSize));
 
+            // The rail's one update button changes job rather than appearing.
             var button = Assert.Single(
                 window.GetVisualDescendants().OfType<Button>(),
-                b => b.Content as string == "Restart to apply update");
+                b => b.Content as string == "Restart & install 1.0.9");
             Assert.True(OnScreen(button), "the restart button is in the tree but not on screen");
         }, _folder, github);
     }
@@ -311,7 +312,7 @@ public sealed class UserInterfaceTests : IDisposable
             // Knowing what you are about to install is worth a line of chrome.
             Assert.Contains(
                 window.GetVisualDescendants().OfType<TextBlock>(),
-                t => t.Text == "Version 1.0.9 ready" && OnScreen(t));
+                t => t.Text == "Version 1.0.9 is ready" && OnScreen(t));
         }, _folder, github);
     }
 
@@ -331,10 +332,79 @@ public sealed class UserInterfaceTests : IDisposable
             window.Measure(window.ClientSize);
             window.Arrange(new Rect(window.ClientSize));
 
+            // The button stays, offering to look again; it just does not offer to
+            // restart into something that is not there.
             Assert.DoesNotContain(
                 window.GetVisualDescendants().OfType<Button>(),
-                b => b.Content as string == "Restart to apply update" && OnScreen(b));
+                b => (b.Content as string)?.StartsWith("Restart", StringComparison.Ordinal) == true
+                  && OnScreen(b));
+            Assert.Contains(
+                window.GetVisualDescendants().OfType<Button>(),
+                b => b.Content as string == "Check for updates" && OnScreen(b));
         }, _folder, github);
+    }
+
+    [Fact]
+    public Task The_rail_offers_to_look_for_an_update_and_says_what_it_found()
+    {
+        var github = new FakeUpdates { Offers = null };
+        return InWindow(async (_, model) =>
+        {
+            Assert.Equal("Check for updates", model.UpdateButton);
+
+            await model.UpdateCommand.ExecuteAsync(null);
+
+            // Somebody asked, so every outcome is reported — unlike the quiet check at
+            // start-up, which says nothing when there is nothing.
+            Assert.Equal(1, github.Checks);
+            Assert.Equal("You have the newest version.", model.UpdateCaption);
+            Assert.False(model.UpdateReady);
+        }, _folder, github);
+    }
+
+    [Fact]
+    public Task A_build_folder_is_told_so_rather_than_left_looking_broken()
+    {
+        var github = new FakeUpdates { Installed = false, Offers = "1.0.9" };
+        return InWindow(async (_, model) =>
+        {
+            await model.UpdateCommand.ExecuteAsync(null);
+
+            Assert.Equal(0, github.Checks);
+            Assert.Contains("build folder", model.UpdateCaption, StringComparison.Ordinal);
+        }, _folder, github);
+    }
+
+    [Fact]
+    public Task Changes_since_import_is_only_on_the_rail_when_there_are_some()
+    {
+        return InWindow(async (window, model) =>
+        {
+            var id = await SeedOneAsync(AppServices.Start(
+                Path.Combine(_folder, "contacts.db"), Path.Combine(_folder, "settings.json")));
+
+            await model.ShowPeopleAsync();
+            Assert.False(model.HasChanges);
+
+            var entry = window.FindControl<RadioButton>("NavChanges")!;
+            Assert.False(OnScreen(entry));
+
+            // Correcting somebody gives that screen something to show.
+            await using (var db = AppServices.Start(
+                Path.Combine(_folder, "contacts.db"), Path.Combine(_folder, "settings.json")).Db())
+            {
+                await new YoursTruly.Data.DirectoryService(db).UpdateDetailsAsync(
+                    id, "corrected@example.com", null, null, AppServices.Today);
+            }
+
+            await model.ShowPeopleAsync();
+            Assert.True(model.HasChanges);
+
+            Dispatcher.UIThread.RunJobs();
+            window.Measure(window.ClientSize);
+            window.Arrange(new Rect(window.ClientSize));
+            Assert.True(OnScreen(entry));
+        }, _folder);
     }
 
     [Fact]
@@ -368,9 +438,15 @@ public sealed class UserInterfaceTests : IDisposable
             window.Measure(window.ClientSize);
             window.Arrange(new Rect(window.ClientSize));
 
+            // The button stays, offering to look again; it just does not offer to
+            // restart into something that is not there.
             Assert.DoesNotContain(
                 window.GetVisualDescendants().OfType<Button>(),
-                b => b.Content as string == "Restart to apply update" && OnScreen(b));
+                b => (b.Content as string)?.StartsWith("Restart", StringComparison.Ordinal) == true
+                  && OnScreen(b));
+            Assert.Contains(
+                window.GetVisualDescendants().OfType<Button>(),
+                b => b.Content as string == "Check for updates" && OnScreen(b));
         }, _folder, github);
     }
 
@@ -859,6 +935,37 @@ public sealed class UserInterfaceTests : IDisposable
             Assert.Equal(["Bellweather, Horatio", "Carrowmore, Ophelia"], send.Rows.Select(r => r.Name));
             Assert.All(send.Rows, r => Assert.True(r.IsSelected));
             Assert.Equal("2 selected", send.SelectedLine);
+        }, _folder);
+
+    [Fact]
+    public Task Adding_somebody_shows_one_note_and_not_an_empty_box() =>
+        InWindow(async (window, model) =>
+        {
+            await model.ShowPeopleAsync();
+            ((PeopleViewModel)model.Current).AddPersonCommand.Execute(null);
+
+            Dispatcher.UIThread.RunJobs();
+            window.Measure(window.ClientSize);
+            window.Arrange(new Rect(window.ClientSize));
+
+            // The note for correcting somebody does not apply while adding one. Its
+            // visibility sat on the words rather than on the box, so the box still
+            // painted its background and its padding: an empty purple bar above the
+            // note that did apply.
+            var wrongNote = Assert.Single(
+                window.GetVisualDescendants().OfType<TextBlock>(),
+                t => t.Text?.StartsWith("Anything you change here", StringComparison.Ordinal) == true);
+            Assert.False(OnScreen(wrongNote));
+
+            var itsBox = wrongNote.GetVisualAncestors().OfType<Border>().First();
+            Assert.False(OnScreen(itsBox), "the note's box is on screen with nothing in it");
+
+            // And the one that does apply is there.
+            Assert.Contains(
+                window.GetVisualDescendants().OfType<TextBlock>(),
+                t => t.Text?.StartsWith("Somebody you add by hand", StringComparison.Ordinal) == true
+                  && OnScreen(t));
+            await Task.CompletedTask;
         }, _folder);
 
     [Fact]
