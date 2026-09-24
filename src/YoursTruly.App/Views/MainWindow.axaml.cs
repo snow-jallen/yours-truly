@@ -48,7 +48,7 @@ public partial class MainWindow : Window, IFilePicker, IClipboardWriter, IDataba
         if (button is not null && this.FindControl<RadioButton>(button) is { } nav) nav.IsChecked = true;
     }
 
-    /// <summary>Starts the background look for a newer the app. Called by App rather
+    /// <summary>Starts the background look for a newer version. Called by App rather
     /// than from the constructor, so a window built directly — as the tests build it —
     /// never reaches for the network unless the test asks it to.</summary>
     public void StartUpdateCheck() => _ = _model?.CheckForUpdateAsync();

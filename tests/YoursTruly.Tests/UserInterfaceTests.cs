@@ -292,7 +292,7 @@ public sealed class UserInterfaceTests : IDisposable
             // The rail's one update button changes job rather than appearing.
             var button = Assert.Single(
                 window.GetVisualDescendants().OfType<Button>(),
-                b => b.Content as string == "Restart & install 1.0.9");
+                b => b.Content as string == "Restart & install v1.0.9");
             Assert.True(OnScreen(button), "the restart button is in the tree but not on screen");
         }, _folder, github);
     }
@@ -312,7 +312,7 @@ public sealed class UserInterfaceTests : IDisposable
             // Knowing what you are about to install is worth a line of chrome.
             Assert.Contains(
                 window.GetVisualDescendants().OfType<TextBlock>(),
-                t => t.Text == "Version 1.0.9 is ready" && OnScreen(t));
+                t => t.Text == "Version 1.0.9 is downloaded and waiting" && OnScreen(t));
         }, _folder, github);
     }
 

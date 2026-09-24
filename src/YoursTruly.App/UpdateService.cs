@@ -23,7 +23,7 @@ public interface IUpdates
     void ApplyAndRestart();
 }
 
-/// <summary>Checks GitHub for a newer the app and installs it.
+/// <summary>Checks GitHub for a newer version and installs it.
 ///
 /// Only works in an app installed from a Velopack package — run from a build folder
 /// there is nothing to replace, and saying so is better than failing obscurely.</summary>

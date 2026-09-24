@@ -53,7 +53,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             ? "Yours Truly"
             : $"Yours Truly (v{UpdateService.CurrentVersion})";
 
-    /// <summary>True once a newer the app is downloaded and waiting. The rail shows a
+    /// <summary>True once a newer version is downloaded and waiting. The rail shows a
     /// restart button only then, so the rest of the time it looks exactly as it did.</summary>
     [ObservableProperty] private bool _updateReady;
 
@@ -69,7 +69,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     /// install it. Naming the version on it means nobody has to go to Setup to find out
     /// what they are about to restart into.</summary>
     public string UpdateButton =>
-        UpdateReady ? $"Restart & install {UpdateVersion}" : "Check for updates";
+        UpdateReady ? $"Restart & install v{UpdateVersion}" : "Check for updates";
 
     partial void OnUpdateReadyChanged(bool value) => OnPropertyChanged(nameof(UpdateButton));
     partial void OnUpdateVersionChanged(string value) => OnPropertyChanged(nameof(UpdateButton));
@@ -99,7 +99,9 @@ public sealed partial class MainWindowViewModel : ObservableObject
             var ready = await _updates.DownloadAsync();
             UpdateVersion = ready.Version ?? found.Version;
             UpdateReady = ready.UpdateReady;
-            UpdateCaption = ready.UpdateReady ? $"Version {UpdateVersion} is ready" : ready.Message;
+            UpdateCaption = ready.UpdateReady
+                ? $"Version {UpdateVersion} is downloaded and waiting"
+                : ready.Message;
         }
         catch (Exception failure)
         {
@@ -109,7 +111,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         finally { UpdateBusy = false; }
     }
 
-    /// <summary>Looks for a newer the app and fetches it in the background, leaving the
+    /// <summary>Looks for a newer version and fetches it in the background, leaving the
     /// user nothing to do but restart when it suits them.
     ///
     /// Silent from end to end. Nobody asked for this, so a copy run from a build
@@ -129,7 +131,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
             if (!ready.UpdateReady) return;
 
             UpdateVersion = ready.Version ?? found.Version;
-            UpdateCaption = $"Version {UpdateVersion} is ready";
+            UpdateCaption = $"Version {UpdateVersion} is downloaded and waiting";
             UpdateReady = true;
         }
         catch (Exception failure)
