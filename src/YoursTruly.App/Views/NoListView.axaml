@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:YoursTruly.App.ViewModels"
+             xmlns:settings="using:YoursTruly.Messaging.Settings"
+             x:Class="YoursTruly.App.Views.NoListView"
+             x:DataType="vm:NoListViewModel">
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="28,26,28,24" MaxWidth="640" HorizontalAlignment="Center"
+                VerticalAlignment="Center" Spacing="18">
+
+      <StackPanel Spacing="6">
+        <TextBlock Classes="h2" Text="No list open"/>
+        <TextBlock Classes="lede" TextWrapping="Wrap"
+                   Text="A list of people is your file, kept wherever you want it, and Yours Truly has not put one anywhere. Start with a file you already have, or begin an empty list and add people by hand."/>
+      </StackPanel>
+
+      <Border Classes="card" Padding="20,18">
+        <StackPanel Spacing="14">
+          <StackPanel Spacing="4">
+            <Button Classes="primary" Content="Import a file…" HorizontalAlignment="Left"
+                    Command="{Binding ImportCommand}"/>
+            <TextBlock FontSize="12.5" Foreground="{DynamicResource Ink3}" TextWrapping="Wrap"
+                       Text="A PDF with people's names, email addresses and phone numbers in it. You choose where the list is saved as part of importing."/>
+          </StackPanel>
+
+          <StackPanel Spacing="4">
+            <Button Content="Open a list…" HorizontalAlignment="Left" Command="{Binding OpenCommand}"/>
+            <TextBlock FontSize="12.5" Foreground="{DynamicResource Ink3}" TextWrapping="Wrap"
+                       Text="A list you have already made, including one copied from another computer."/>
+          </StackPanel>
+
+          <StackPanel Spacing="4">
+            <Button Content="Start an empty list…" HorizontalAlignment="Left"
+                    Command="{Binding StartEmptyCommand}"/>
+            <TextBlock FontSize="12.5" Foreground="{DynamicResource Ink3}" TextWrapping="Wrap"
+                       Text="For typing people in yourself, when there is no file to import."/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <StackPanel Spacing="8" IsVisible="{Binding HasKnown}">
+        <TextBlock Classes="eyebrow" Text="LISTS YOU HAVE OPENED BEFORE"/>
+        <Border Classes="card" Padding="0" ClipToBounds="True">
+          <ItemsControl ItemsSource="{Binding Known}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="settings:SavedList">
+                <Border Classes="row">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource Ink}"/>
+                      <TextBlock Text="{Binding Path}" Classes="mono" FontSize="11"
+                                 Foreground="{DynamicResource Ink3}" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="Open" Padding="12,3" FontSize="12"
+                            Command="{Binding $parent[ItemsControl].((vm:NoListViewModel)DataContext).OpenSavedCommand}"
+                            CommandParameter="{Binding}"/>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Border>
+        <TextBlock FontSize="12" Foreground="{DynamicResource Ink3}" TextWrapping="Wrap"
+                   Text="One of these was open last time. If it is not opening, the file has been moved or renamed, or it is on a drive that is not plugged in."/>
+      </StackPanel>
+
+      <TextBlock Text="{Binding Status}" FontSize="12.5" TextWrapping="Wrap"
+                 Foreground="{DynamicResource Crit}"
+                 IsVisible="{Binding Status, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

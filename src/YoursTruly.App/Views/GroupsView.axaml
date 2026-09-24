@@ -1,0 +1,159 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:YoursTruly.App.ViewModels"
+             x:Class="YoursTruly.App.Views.GroupsView"
+             x:DataType="vm:GroupsViewModel">
+
+  <!-- The groups down the left, the chosen one on the right: who is in it, who could
+       be, and sending to it. The same shape as What you have sent. -->
+  <Grid Margin="28,26,28,24" RowDefinitions="Auto,*">
+    <StackPanel Grid.Row="0">
+      <TextBlock Classes="h2" Text="Groups"/>
+      <TextBlock Classes="lede" Margin="0,4,0,0"
+                 Text="Lists of people you send to again and again. Choose one to see who is in it, add or take people out, or send it a message."/>
+    </StackPanel>
+
+    <Grid Grid.Row="1" ColumnDefinitions="300,*" ColumnSpacing="20" Margin="0,18,0,0">
+
+      <!-- Every group, and making a new one -->
+      <Border Grid.Column="0" Classes="card" Padding="0" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,*">
+          <StackPanel Grid.Row="0" Spacing="7" Margin="14,13,14,13">
+            <TextBlock Classes="eyebrow" Text="NEW GROUP"/>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="7">
+              <TextBox Grid.Column="0" Text="{Binding NewGroupName}" MaxLength="60"
+                       PlaceholderText="Activities committee"/>
+              <Button Grid.Column="1" Classes="primary" Content="Make it"
+                      Command="{Binding CreateGroupCommand}"/>
+            </Grid>
+          </StackPanel>
+          <Border Grid.Row="1" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0">
+            <ScrollViewer Name="GroupScroller" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+              <ItemsControl ItemsSource="{Binding Groups}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:GroupRow">
+                    <Button Classes="sentrow" Classes.on="{Binding IsSelected}"
+                            Command="{Binding OpenCommand}" HorizontalAlignment="Stretch">
+                      <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13.5"
+                                   TextTrimming="CharacterEllipsis" Foreground="{DynamicResource Ink}"/>
+                        <TextBlock Text="{Binding Count}" FontSize="11.5"
+                                   Foreground="{DynamicResource Ink3}"/>
+                      </StackPanel>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Border>
+        </Grid>
+      </Border>
+
+      <!-- Nothing to show yet -->
+      <StackPanel Grid.Column="1" Spacing="8" IsVisible="{Binding NoGroups}">
+        <TextBlock Text="No groups yet" FontWeight="SemiBold" FontSize="15"
+                   Foreground="{DynamicResource Ink}"/>
+        <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="{DynamicResource Ink2}" MaxWidth="560"
+                   HorizontalAlignment="Left"
+                   Text="Name one on the left — a committee, a team, anyone you message together — then add people to it. Importing a file can fill them too, from a column like Team or Class. You can also tick people on the Send screen and save them as a group."/>
+        <TextBlock Text="{Binding Status}" FontSize="12.5" TextWrapping="Wrap"
+                   Foreground="{DynamicResource Ink2}"/>
+      </StackPanel>
+
+      <!-- The chosen group -->
+      <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,*" IsVisible="{Binding HasSelection}">
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="8">
+          <TextBox Grid.Column="0" Text="{Binding EditName}" MaxLength="60" FontSize="15"
+                   FontWeight="SemiBold"/>
+          <Button Grid.Column="1" Content="Save name" Command="{Binding RenameCommand}"/>
+          <Button Grid.Column="2" Content="Delete group" Command="{Binding StartDeletingCommand}"/>
+          <Button Grid.Column="3" Classes="primary" Content="Send message"
+                  Command="{Binding SendCommand}"/>
+        </Grid>
+
+        <Border Grid.Row="1" Classes="notice privacy" Margin="0,10,0,0" IsVisible="{Binding ConfirmingDelete}">
+          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+            <TextBlock Grid.Column="0" Text="{Binding DeleteLine}" TextWrapping="Wrap" FontSize="12.5"
+                       VerticalAlignment="Center" Foreground="{DynamicResource Ink}"/>
+            <Button Grid.Column="1" Content="Delete it" Command="{Binding DeleteCommand}"/>
+            <Button Grid.Column="2" Content="Keep it" Command="{Binding KeepGroupCommand}"/>
+          </Grid>
+        </Border>
+
+        <TextBlock Grid.Row="2" Text="{Binding Status}" FontSize="12.5" TextWrapping="Wrap" Margin="0,8,0,0"
+                   Foreground="{DynamicResource Ink2}" IsVisible="{Binding Status.Length}"/>
+
+        <Grid Grid.Row="3" ColumnDefinitions="*,*" ColumnSpacing="16" Margin="0,14,0,0">
+
+          <!-- Who is in it -->
+          <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto">
+            <TextBlock Grid.Row="0" Classes="eyebrow" Text="IN THIS GROUP" Margin="0,0,0,7"/>
+            <Border Grid.Row="1" Classes="card" Padding="0" ClipToBounds="True">
+              <ScrollViewer Name="MemberScroller" VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding Members}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:GroupPersonRow">
+                      <Border Classes="row">
+                        <Grid ColumnDefinitions="*,Auto">
+                          <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                       Foreground="{DynamicResource Ink}"/>
+                            <TextBlock Text="{Binding Detail}" FontSize="11.5" Foreground="{DynamicResource Ink3}"
+                                       IsVisible="{Binding !HasLeft}"/>
+                            <TextBlock Text="No longer in the directory" FontSize="11.5"
+                                       Foreground="{DynamicResource Warn}" IsVisible="{Binding HasLeft}"/>
+                          </StackPanel>
+                          <Button Grid.Column="1" Content="Take out" Padding="9,3" FontSize="12"
+                                  Command="{Binding ActCommand}"/>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Border>
+            <TextBlock Grid.Row="2" Text="{Binding MemberLine}" FontSize="12" TextWrapping="Wrap"
+                       Margin="0,7,0,0" Foreground="{DynamicResource Ink3}"/>
+          </Grid>
+
+          <!-- Who could be -->
+          <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*,Auto">
+            <TextBlock Grid.Row="0" Classes="eyebrow" Text="ADD PEOPLE" Margin="0,0,0,7"/>
+            <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,0,0,8">
+              <TextBox Grid.Column="0" Text="{Binding AddSearch}"
+                       PlaceholderText="Search a name, email, phone or note"/>
+              <Button Grid.Column="1" Content="Add all shown" Command="{Binding AddAllShownCommand}"
+                      IsEnabled="{Binding AnyCandidates}"/>
+            </Grid>
+            <Border Grid.Row="2" Classes="card" Padding="0" ClipToBounds="True">
+              <ScrollViewer Name="CandidateScroller" VerticalScrollBarVisibility="Auto"
+                            HorizontalScrollBarVisibility="Disabled">
+                <ItemsControl ItemsSource="{Binding Candidates}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:GroupPersonRow">
+                      <Border Classes="row">
+                        <Grid ColumnDefinitions="*,Auto">
+                          <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                       Foreground="{DynamicResource Ink}"/>
+                            <TextBlock Text="{Binding Detail}" FontSize="11.5" Foreground="{DynamicResource Ink3}"/>
+                          </StackPanel>
+                          <Button Grid.Column="1" Content="Add" Padding="12,3" FontSize="12"
+                                  Command="{Binding ActCommand}"/>
+                        </Grid>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+            </Border>
+            <TextBlock Grid.Row="3" Text="{Binding CandidateLine}" FontSize="12" TextWrapping="Wrap"
+                       Margin="0,7,0,0" Foreground="{DynamicResource Ink3}"/>
+          </Grid>
+        </Grid>
+      </Grid>
+    </Grid>
+  </Grid>
+</UserControl>

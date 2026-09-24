@@ -1,0 +1,145 @@
+using System.Security;
+using YoursTruly.Core.Domain;
+using YoursTruly.Messaging.Settings;
+
+namespace YoursTruly.Messaging.Twilio;
+
+/// <summary>The call the user records once, which then plays to everyone who prefers
+/// a phone call.</summary>
+public sealed record RecordingCall(string CallSid, string Message);
+
+/// <summary>Rings people and plays the message the user recorded in their own voice.
+///
+/// There is no text-to-speech and nothing is hosted anywhere. the app rings the user,
+/// records them, and Twilio keeps that recording; the broadcast then plays it back by
+/// its Twilio address. Both halves pass their TwiML inline when the call is created,
+/// which is what lets a desktop app with no public address of its own place calls at
+/// all — the usual arrangement needs a web server for Twilio to fetch instructions
+/// from.</summary>
+public sealed class VoiceSender(ITwilioGateway gateway, TwilioSettings settings) : IMessageSender
+{
+    public Channel Channel => Channel.Voice;
+
+    public bool IsConfigured => settings.IsComplete;
+
+    public async Task<SendOutcome> SendAsync(
+        string address, OutgoingMessage message, CancellationToken cancellation = default)
+    {
+        if (!settings.IsComplete)
+            return SendOutcome.Failed(
+                "Yours Truly has no Twilio account to call from yet. Add your Account SID, Auth Token and Twilio number on the Setup screen.");
+
+        var twiml = TwimlFor(message);
+        if (twiml is null)
+            return SendOutcome.Failed(
+                "There is nothing for this call to play. On the Send screen either record yourself reading the message, or switch on reading it aloud.");
+
+        if (!PhoneNumbers.IsDiallable(address))
+            return SendOutcome.Failed(PhoneNumbers.Complaint(address));
+
+        try
+        {
+            var sid = await gateway.StartCallAsync(settings.FromNumber, address.Trim(), twiml, cancellation);
+            return SendOutcome.Sent(sid);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception failure)
+        {
+            return SendOutcome.Failed(TwilioProblem.Explain(failure, address, settings));
+        }
+    }
+
+    public async Task<CredentialCheck> TestAsync(string address, CancellationToken cancellation = default)
+    {
+        if (!settings.IsComplete)
+            return CredentialCheck.Broken("Fill in your Twilio details first, then try again.");
+
+        var destination = string.IsNullOrWhiteSpace(address) ? settings.TestNumber : address.Trim();
+        if (string.IsNullOrWhiteSpace(destination))
+            return CredentialCheck.Broken("Add your own mobile number on the Setup screen so Yours Truly has somewhere to call.");
+
+        var outcome = await SendAsync(
+            destination,
+            new OutgoingMessage("", "This is a test from Yours Truly. Calling works. Nobody else was called.", SpeakAloud: true),
+            cancellation);
+
+        return outcome.Status == SendStatus.Sent
+            ? CredentialCheck.Working($"Calling {destination} now. Answer it to hear the test.")
+            : CredentialCheck.Broken(outcome.Error ?? "Yours Truly could not place the test call.");
+    }
+
+    /// <summary>Rings the user and plays exactly what everyone else would hear, so the
+    /// call can be checked before it goes to 300 people.</summary>
+    public Task<SendOutcome> PreviewAsync(
+        string address, OutgoingMessage message, CancellationToken cancellation = default) =>
+        SendAsync(address, message, cancellation);
+
+    /// <summary>A recording if one was made, otherwise the message read aloud, otherwise
+    /// nothing — a call that connects to silence is worse than one that never goes out.</summary>
+    private static string? TwimlFor(OutgoingMessage message)
+    {
+        if (message.VoiceRecordingUrl is { Length: > 0 } recording) return Play(recording);
+        if (message.SpeakAloud && message.Body.Trim().Length > 0) return Speak(message.Body);
+        return null;
+    }
+
+    private static string Speak(string body) =>
+        $"<Response><Say voice=\"Polly.Joanna\">{SecurityElement.Escape(body)}</Say></Response>";
+
+    /// <summary>Rings the user so they can read this message aloud. They hang up when
+    /// done; the recording is then fetched with <see cref="CollectRecordingAsync"/>.
+    ///
+    /// The call does not read the message out first: the person who wrote it is looking
+    /// at it on screen, and being read their own words back is a delay, not a help.</summary>
+    public async Task<RecordingCall?> StartRecordingAsync(CancellationToken cancellation = default)
+    {
+        if (!settings.IsComplete || string.IsNullOrWhiteSpace(settings.TestNumber)) return null;
+
+        try
+        {
+            var sid = await gateway.StartCallAsync(
+                settings.FromNumber, settings.TestNumber, RecordPrompt, cancellation);
+            return new RecordingCall(sid,
+                $"Yours Truly is ringing {settings.TestNumber}. Speak your message after the beep, then hang up.");
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception failure)
+        {
+            return new RecordingCall("", TwilioProblem.Explain(failure, settings.TestNumber, settings));
+        }
+    }
+
+    /// <summary>The address of what the user just recorded, once they have hung up.
+    /// Null while the call is still in progress.</summary>
+    public async Task<string?> CollectRecordingAsync(string callSid, CancellationToken cancellation = default)
+    {
+        if (string.IsNullOrWhiteSpace(callSid)) return null;
+        try
+        {
+            return await gateway.LatestRecordingUrlAsync(callSid, cancellation);
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private const string RecordPrompt =
+        "<Response>" +
+        "<Say voice=\"Polly.Joanna\">Read your message after the beep, then hang up.</Say>" +
+        "<Record maxLength=\"180\" playBeep=\"true\" trim=\"trim-silence\"/>" +
+        "</Response>";
+
+    private static string Play(string recordingUrl) =>
+        $"<Response><Play>{SecurityElement.Escape(recordingUrl)}</Play></Response>";
+}

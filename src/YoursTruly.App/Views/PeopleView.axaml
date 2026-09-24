@@ -1,0 +1,174 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:YoursTruly.App.ViewModels"
+             x:Class="YoursTruly.App.Views.PeopleView"
+             x:DataType="vm:PeopleViewModel">
+
+  <Grid Margin="28,26,28,24" RowDefinitions="Auto,Auto,Auto,*,Auto">
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+    <StackPanel Grid.Column="0">
+    <TextBlock Classes="h2" Text="People"/>
+    <TextBlock Classes="lede" Margin="0,4,0,0"
+               Text="Tick every way each person wants to hear from you — several is fine, and they all happen. That choice is yours, not the file's: importing again never resets it."/>
+    </StackPanel>
+    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Top">
+      <Button Content="Import a file…" Command="{Binding ImportCommand}"
+              IsVisible="{Binding CanImport}"/>
+      <Button Classes="primary" Content="+ Add someone" Command="{Binding AddPersonCommand}"/>
+    </StackPanel>
+    </Grid>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="0,18,0,12" ColumnSpacing="9">
+      <TextBox Grid.Column="0" PlaceholderText="Search a name, email, phone or note"
+               Text="{Binding Search}"/>
+      <ComboBox Grid.Column="1" MinWidth="200"
+                ItemsSource="{Binding GroupOptions}" SelectedItem="{Binding Group}"/>
+    </Grid>
+
+    <Grid Grid.Row="3" ColumnDefinitions="*,Auto" ColumnSpacing="14">
+    <Border Grid.Column="0" Classes="card" Padding="0" ClipToBounds="True">
+      <Grid RowDefinitions="Auto,*">
+        <Border Grid.Row="0" Classes="header">
+          <Grid ColumnDefinitions="2*,2.2*,1.4*,0.5*,0.8*,Auto,Auto">
+            <Button Grid.Column="0" Classes="sortable" Content="NAME"
+                    Command="{Binding SortByCommand}" CommandParameter="name"/>
+            <TextBlock Grid.Column="1" Classes="colhead" Text="EMAIL"/>
+            <TextBlock Grid.Column="2" Classes="colhead" Text="PHONE"/>
+            <Button Grid.Column="3" Classes="sortable" Content="AGE"
+                    Command="{Binding SortByCommand}" CommandParameter="age"/>
+            <Button Grid.Column="4" Classes="sortable" Content="BIRTHDAY"
+                    Command="{Binding SortByCommand}" CommandParameter="birthday"/>
+            <Button Grid.Column="5" Classes="sortable" Content="SEND BY" Width="168"
+                    Command="{Binding SortByCommand}" CommandParameter="channel"/>
+            <TextBlock Grid.Column="6" Classes="colhead" Text="" Width="54"/>
+          </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" Name="PeopleScroller"
+                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+          <ItemsControl ItemsSource="{Binding Rows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PersonRow">
+                <Border Classes="row" Background="Transparent" DoubleTapped="OnRowDoubleTapped">
+                  <Grid ColumnDefinitions="2*,2.2*,1.4*,0.5*,0.8*,Auto,Auto">
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="1">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                 Foreground="{DynamicResource Ink}" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding Note}" FontSize="11.5" FontStyle="Italic"
+                                 IsVisible="{Binding HasNote}" TextTrimming="CharacterEllipsis"
+                                 Foreground="{DynamicResource ChVoice}"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1" Text="{Binding Email}" Classes="mono"
+                               Foreground="{DynamicResource Ink2}" TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Phone}" Classes="mono"
+                               Foreground="{DynamicResource Ink2}" TextTrimming="CharacterEllipsis"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="3" Text="{Binding Age}" Classes="mono"
+                               Foreground="{DynamicResource Ink2}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="4" Text="{Binding Birthday}" Classes="mono"
+                               Foreground="{DynamicResource Ink3}" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="5" Orientation="Horizontal" Width="168">
+                      <Button Classes="chip first email" Classes.on="{Binding IsEmail}"
+                              Content="Email" Command="{Binding ChooseEmailCommand}"/>
+                      <Button Classes="chip text" Classes.on="{Binding IsText}"
+                              Content="Text" Command="{Binding ChooseTextCommand}"/>
+                      <Button Classes="chip last voice" Classes.on="{Binding IsVoice}"
+                              Content="Call" Command="{Binding ChooseVoiceCommand}"/>
+                    </StackPanel>
+                    <Button Grid.Column="6" Content="Edit" Width="54" Padding="6,3" FontSize="12"
+                            Margin="8,0,0,0" Command="{Binding EditCommand}"/>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+
+    <!-- Correcting one person. Appears beside the list rather than over it, so you can
+         still see who you are editing. -->
+    <Border Grid.Column="1" Classes="card" Width="310" Padding="16"
+            IsVisible="{Binding IsEditing}" VerticalAlignment="Stretch">
+      <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Spacing="12" DataContext="{Binding Editing}">
+          <StackPanel Spacing="2" IsVisible="{Binding !IsNew}">
+            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="15"
+                       Foreground="{DynamicResource Ink}" TextWrapping="Wrap"/>
+          </StackPanel>
+
+          <StackPanel Spacing="12" IsVisible="{Binding IsNew}">
+            <TextBlock Text="Add someone" FontWeight="SemiBold" FontSize="15"
+                       Foreground="{DynamicResource Ink}"/>
+            <StackPanel Spacing="6">
+              <TextBlock Classes="eyebrow" Text="SURNAME"/>
+              <TextBox Text="{Binding LastName}" PlaceholderText="Winslade"/>
+            </StackPanel>
+            <StackPanel Spacing="6">
+              <TextBlock Classes="eyebrow" Text="GIVEN NAME"/>
+              <TextBox Text="{Binding FirstName}" PlaceholderText="Verity"/>
+            </StackPanel>
+          </StackPanel>
+
+          <StackPanel Spacing="6">
+            <TextBlock Classes="eyebrow" Text="EMAIL"/>
+            <TextBox Text="{Binding Email}" PlaceholderText="none on file"/>
+          </StackPanel>
+          <StackPanel Spacing="6">
+            <TextBlock Classes="eyebrow" Text="PHONE"/>
+            <TextBox Text="{Binding Phone}" PlaceholderText="(435) 555-0100"/>
+          </StackPanel>
+          <StackPanel Spacing="6">
+            <TextBlock Classes="eyebrow" Text="NOTE — JUST FOR YOU"/>
+            <TextBox Text="{Binding Notes}" AcceptsReturn="True" Height="54" TextWrapping="Wrap"
+                     PlaceholderText="Hard of hearing — call the landline."/>
+            <TextBlock TextWrapping="Wrap" FontSize="11.5" Foreground="{DynamicResource Ink3}"
+                       Text="Searching looks at notes too, so a word like “choir” or “#ride-needed” here becomes a way to gather people on the Send screen."/>
+          </StackPanel>
+
+          <StackPanel Spacing="6">
+            <TextBlock Classes="eyebrow" Text="GROUPS"/>
+            <ItemsControl ItemsSource="{Binding Groups}" IsVisible="{Binding HasGroups}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:GroupTick">
+                  <CheckBox IsChecked="{Binding IsMember}" Content="{Binding Name}" FontSize="13"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBox Text="{Binding NewGroup}" MaxLength="60"
+                     PlaceholderText="Or start a new group"/>
+          </StackPanel>
+
+          <Border Background="{DynamicResource AccentSoft}" CornerRadius="8" Padding="11,9">
+            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource AccentInk}"
+                       IsVisible="{Binding !IsNew}"
+                       Text="Anything you change here is kept through the next import — Yours Truly records the correction rather than writing over what the file said — and is listed on “Changes since import”, so you can put it back into wherever your list comes from. The note stays here and goes nowhere."/>
+          </Border>
+          <Border Background="{DynamicResource AccentSoft}" CornerRadius="8" Padding="11,9"
+                  IsVisible="{Binding IsNew}">
+            <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource AccentInk}"
+                       Text="Somebody you add by hand is in no imported file, so no import will ever decide they have left. Their details are listed on “Changes since import” until a file carries them. If a later one does, Yours Truly recognises them by name and they become part of the list proper."/>
+          </Border>
+
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Classes="primary" Content="Save" Command="{Binding SaveCommand}"
+                    IsEnabled="{Binding !Busy}"/>
+            <Button Content="Cancel" Command="{Binding CancelCommand}"/>
+          </StackPanel>
+          <TextBlock Text="{Binding Status}" FontSize="12" TextWrapping="Wrap"
+                     Foreground="{DynamicResource Crit}"/>
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+    </Grid>
+
+    <StackPanel Grid.Row="4" Margin="0,9,0,0">
+      <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="{DynamicResource Ink3}"/>
+      <TextBlock Text="{Binding EditStatus}" FontSize="12" Margin="0,3,0,0" TextWrapping="Wrap"
+                 Foreground="{DynamicResource Good}"/>
+      <TextBlock Margin="0,3,0,0" FontSize="12" Foreground="{DynamicResource Ink3}" TextWrapping="Wrap"
+                 Text="Double-click anyone to correct their details. Tick as many channels as you like — each one ticked is a message that will go out. People who have fallen out of the imported list are hidden here."/>
+    </StackPanel>
+  </Grid>
+</UserControl>

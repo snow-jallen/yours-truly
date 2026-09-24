@@ -1,0 +1,442 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:YoursTruly.App.ViewModels"
+             xmlns:settings="using:YoursTruly.Messaging.Settings"
+             x:Class="YoursTruly.App.Views.SetupView"
+             x:DataType="vm:SetupViewModel">
+
+  <!-- The form scrolls; Save does not. Nobody should have to go looking for it to find
+       out whether their typing has been kept. -->
+  <Grid RowDefinitions="*,Auto">
+  <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="28,26,28,20" MaxWidth="900" HorizontalAlignment="Stretch">
+    <TextBlock Classes="h2" Text="Setup"/>
+    <TextBlock Classes="lede" Margin="0,4,0,0"
+               Text="Your lists of people, and the accounts Yours Truly sends through. Each account has a Test button that sends a real message to you, so Working means it actually worked."/>
+
+    <!-- The lists. First, and the only card with a red edge: what it holds is the
+         thing worth being careful with. -->
+    <Border Classes="card notice privacy" Margin="0,20,0,0" Padding="0"
+            BorderThickness="3,1,1,1">
+      <StackPanel>
+        <Border Background="{DynamicResource Surface2}" Padding="15,13"
+                BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+          <StackPanel Spacing="1">
+            <TextBlock Text="Your lists of people" FontWeight="SemiBold" FontSize="14"
+                       Foreground="{DynamicResource Ink}"/>
+            <TextBlock Text="One file each, on this computer — not in the cloud, not on a server"
+                       FontSize="12" Foreground="{DynamicResource Ink3}"/>
+          </StackPanel>
+        </Border>
+        <StackPanel Margin="15" Spacing="12">
+
+          <StackPanel Spacing="6">
+            <TextBlock Classes="eyebrow" Text="THE LIST THAT IS OPEN"/>
+            <TextBox Text="{Binding ListName}" MaxLength="60"
+                     PlaceholderText="Soccer team"/>
+            <Border Background="{DynamicResource Surface2}" CornerRadius="6" Padding="10,7"
+                    BorderBrush="{DynamicResource Line}" BorderThickness="1">
+              <TextBlock Text="{Binding DatabasePath}" Classes="mono"
+                         Foreground="{DynamicResource Ink2}" TextWrapping="Wrap"/>
+            </Border>
+            <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource Ink3}"
+                       Text="Name it whatever you call it. That name is what the switcher at the bottom of the rail shows."/>
+          </StackPanel>
+
+          <StackPanel Spacing="6" IsVisible="{Binding HasOtherLists}">
+            <TextBlock Classes="eyebrow" Text="YOUR OTHER LISTS"/>
+            <ItemsControl ItemsSource="{Binding OtherLists}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="settings:SavedList">
+                  <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="0,7">
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                      <StackPanel Grid.Column="0" Spacing="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="13"
+                                   Foreground="{DynamicResource Ink}"/>
+                        <TextBlock Text="{Binding Path}" Classes="mono" FontSize="11"
+                                   Foreground="{DynamicResource Ink3}" TextTrimming="CharacterEllipsis"/>
+                      </StackPanel>
+                      <Button Grid.Column="1" Content="Open" Padding="12,3" FontSize="12"
+                              Command="{Binding $parent[ItemsControl].((vm:SetupViewModel)DataContext).OpenSavedCommand}"
+                              CommandParameter="{Binding}"/>
+                      <Button Grid.Column="2" Content="Forget" Padding="10,3" FontSize="12"
+                              Command="{Binding $parent[ItemsControl].((vm:SetupViewModel)DataContext).ForgetCommand}"
+                              CommandParameter="{Binding}"/>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <Button Classes="primary" Content="Start a new list…" Command="{Binding NewDatabaseCommand}"
+                    IsVisible="{Binding CanBrowseForDatabase}"/>
+            <Button Content="Open a list from a file…" Command="{Binding OpenDatabaseCommand}"
+                    IsVisible="{Binding CanBrowseForDatabase}"/>
+            <Button Content="Back up this one" Command="{Binding BackUpNowCommand}"/>
+          </StackPanel>
+          <TextBlock Text="{Binding BackupStatus}" FontSize="12.5" TextWrapping="Wrap"
+                     Foreground="{DynamicResource Ink2}"/>
+
+          <TextBlock TextWrapping="Wrap" FontSize="13" FontWeight="SemiBold"
+                     Foreground="{DynamicResource Ink}"
+                     Text="These files hold real people's phone numbers, email addresses and birthdays, and they are not password-protected."/>
+          <StackPanel Spacing="6">
+            <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource Ink2}"
+                       Text="•  Anyone who can use this computer can open them. Lock your screen when you step away, and don't leave Yours Truly running on a shared or borrowed machine."/>
+            <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource Ink2}"
+                       Text="•  Never email, text or upload one of these files, or the file you imported it from. If someone needs to reach these people, send it through Yours Truly instead."/>
+            <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource Ink2}"
+                       Text="•  Clear imported PDFs out of your Downloads folder once they are in."/>
+            <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource Ink2}"
+                       Text="•  If this computer is lost or stolen, treat every list on it as exposed and tell whoever gave you the names."/>
+            <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource Ink2}"
+                       Text="•  These details were given to you for one purpose. Use them for it, and don't pass a list to anyone who wasn't given it too."/>
+          </StackPanel>
+
+          <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource Ink3}"
+                     Text="Keeping a list in a synced folder such as Dropbox works, but only if one computer has Yours Truly open at a time — two at once can leave the file unreadable."/>
+          <TextBlock FontSize="12" Foreground="{DynamicResource Ink3}" TextWrapping="Wrap"
+                     Text="A backup is taken automatically before every import."/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- Who this is from -->
+    <Border Classes="card" Margin="0,14,0,0" Padding="0">
+      <StackPanel>
+        <Border Background="{DynamicResource Surface2}" Padding="15,13"
+                BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+          <StackPanel Spacing="1">
+            <TextBlock Text="Who these messages are from" FontWeight="SemiBold" FontSize="14"
+                       Foreground="{DynamicResource Ink}"/>
+            <TextBlock Text="Yours Truly sends as you, not as an organisation — so every message says who it is from"
+                       FontSize="12" Foreground="{DynamicResource Ink3}"/>
+          </StackPanel>
+        </Border>
+        <StackPanel Margin="15" Spacing="12">
+          <StackPanel Spacing="6">
+            <TextBlock Classes="eyebrow" Text="YOUR SIGNATURE"/>
+            <TextBox Text="{Binding Signature}" AcceptsReturn="True" Height="66" TextWrapping="Wrap"
+                     MaxLength="{Binding SignatureMaxLength}"
+                     PlaceholderText="Jonathan Allen, Thunder FC"/>
+          </StackPanel>
+          <Border Background="{DynamicResource Surface2}" CornerRadius="8" Padding="12,10"
+                  BorderBrush="{DynamicResource Line}" BorderThickness="1">
+            <StackPanel Spacing="4">
+              <TextBlock Classes="eyebrow" Text="ADDED TO THE END OF EVERY MESSAGE"/>
+              <TextBlock Text="{Binding SignaturePreview}" FontSize="13.5"
+                         Foreground="{DynamicResource Ink}" TextWrapping="Wrap"/>
+            </StackPanel>
+          </Border>
+          <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource Ink2}"
+                     Text="A text from a number nobody recognises gets ignored, or reported as spam. A signed one gets answered — so put whatever makes people know it is you. If you sign off in your own words at the end of a message, Yours Truly leaves it alone rather than signing it twice."/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- Email -->
+    <Border Classes="card" Margin="0,14,0,0" Padding="0">
+      <StackPanel>
+        <Border Background="{DynamicResource Surface2}" Padding="15,13"
+                BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0" Spacing="1">
+              <TextBlock Text="Email" FontWeight="SemiBold" FontSize="14"
+                         Foreground="{DynamicResource Ink}"/>
+              <TextBlock Text="Sends through your own Gmail — free, up to about 500 a day"
+                         FontSize="12" Foreground="{DynamicResource Ink3}"/>
+            </StackPanel>
+            <Border Grid.Column="1" CornerRadius="20" Padding="10,4" VerticalAlignment="Center"
+                    Background="{DynamicResource GoodSoft}" IsVisible="{Binding EmailOk}">
+              <TextBlock Text="Working" FontSize="12" FontWeight="SemiBold"
+                         Foreground="{DynamicResource Good}"/>
+            </Border>
+          </Grid>
+        </Border>
+        <StackPanel Margin="15" Spacing="12">
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+            <StackPanel Grid.Column="0" Spacing="6">
+              <TextBlock Classes="eyebrow" Text="YOUR GMAIL ADDRESS"/>
+              <TextBox Text="{Binding EmailAddress}" PlaceholderText="you@gmail.com"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="6">
+              <TextBlock Classes="eyebrow" Text="APP PASSWORD"/>
+              <TextBox Text="{Binding AppPassword}" PasswordChar="•"
+                       PlaceholderText="16 letters from Google"/>
+            </StackPanel>
+          </Grid>
+          <StackPanel Spacing="6">
+            <TextBlock Classes="eyebrow" Text="NAME PEOPLE SEE (OPTIONAL)"/>
+            <TextBox Text="{Binding DisplayName}" PlaceholderText="Jonathan Allen"/>
+          </StackPanel>
+
+          <Border Background="{DynamicResource AccentSoft}" CornerRadius="8" Padding="12,10">
+            <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource AccentInk}"
+                       Text="An app password is not your Gmail password. In your Google Account open Security, turn on 2-Step Verification if it is off, then choose App passwords and make one for Yours Truly."/>
+          </Border>
+
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <Button Content="Send myself a test email" Command="{Binding TestEmailCommand}"
+                    IsEnabled="{Binding !EmailBusy}"/>
+          </StackPanel>
+          <TextBlock Text="{Binding EmailStatus}" TextWrapping="Wrap" FontSize="12.5"
+                     Foreground="{DynamicResource Ink2}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- Twilio account: needed for calls always, and for texts unless a phone sends them -->
+    <Border Classes="card" Margin="0,14,0,0" Padding="0">
+      <StackPanel>
+        <Border Background="{DynamicResource Surface2}" Padding="15,13"
+                BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0" Spacing="1">
+              <TextBlock Text="Twilio account" FontWeight="SemiBold" FontSize="14"
+                         Foreground="{DynamicResource Ink}"/>
+              <TextBlock Text="{Binding TwilioPurpose}" FontSize="12"
+                         Foreground="{DynamicResource Ink3}" TextWrapping="Wrap"/>
+            </StackPanel>
+            <Border Grid.Column="1" CornerRadius="20" Padding="10,4" VerticalAlignment="Center"
+                    Background="{DynamicResource GoodSoft}" IsVisible="{Binding TwilioOk}">
+              <TextBlock Text="Working" FontSize="12" FontWeight="SemiBold"
+                         Foreground="{DynamicResource Good}"/>
+            </Border>
+          </Grid>
+        </Border>
+        <StackPanel Margin="15" Spacing="12">
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="12" RowDefinitions="Auto,Auto" RowSpacing="12">
+            <StackPanel Grid.Row="0" Grid.Column="0" Spacing="6">
+              <TextBlock Classes="eyebrow" Text="ACCOUNT SID"/>
+              <TextBox Text="{Binding AccountSid}" Classes="mono" PlaceholderText="AC…"/>
+            </StackPanel>
+            <StackPanel Grid.Row="0" Grid.Column="1" Spacing="6">
+              <TextBlock Classes="eyebrow" Text="AUTH TOKEN"/>
+              <TextBox Text="{Binding AuthToken}" PasswordChar="•"/>
+            </StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="0" Spacing="6">
+              <TextBlock Classes="eyebrow" Text="YOUR TWILIO NUMBER"/>
+              <TextBox Text="{Binding FromNumber}" Classes="mono" PlaceholderText="+14355550188"/>
+            </StackPanel>
+            <StackPanel Grid.Row="1" Grid.Column="1" Spacing="6">
+              <TextBlock Classes="eyebrow" Text="YOUR OWN MOBILE (FOR TESTS)"/>
+              <TextBox Text="{Binding TestNumber}" Classes="mono" PlaceholderText="+14355550164"/>
+            </StackPanel>
+          </Grid>
+          <TextBlock Text="{Binding TwilioStatus}" TextWrapping="Wrap" FontSize="12.5"
+                     Foreground="{DynamicResource Ink2}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- Text messages -->
+    <Border Classes="card" Margin="0,14,0,0" Padding="0">
+      <StackPanel>
+        <Border Background="{DynamicResource Surface2}" Padding="15,13"
+                BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+          <StackPanel Spacing="1">
+            <TextBlock Text="Text messages" FontWeight="SemiBold" FontSize="14"
+                       Foreground="{DynamicResource Ink}"/>
+            <TextBlock Text="Through a service, or from your own phone" FontSize="12"
+                       Foreground="{DynamicResource Ink3}"/>
+          </StackPanel>
+        </Border>
+        <StackPanel Margin="15" Spacing="12">
+          <StackPanel Spacing="7">
+            <TextBlock Classes="eyebrow" Text="WHERE TEXTS GO OUT FROM"/>
+            <RadioButton GroupName="texttransport" IsChecked="{Binding UseTwilioForText}"
+                         Content="Through Twilio — reaches everyone, from a number they do not know"
+                         FontSize="13"/>
+            <RadioButton GroupName="texttransport" IsChecked="{Binding UseIphone}"
+                         IsEnabled="{Binding IphoneRouteAvailable}"
+                         Content="From my iPhone, through the Messages app on this Mac"
+                         FontSize="13"/>
+            <TextBlock FontSize="11.5" Margin="24,-4,0,0" Foreground="{DynamicResource Ink3}"
+                       TextWrapping="Wrap" IsVisible="{Binding !IphoneRouteAvailable}"
+                       Text="Only available on a Mac — the iPhone route works by asking the Messages app to send, and Messages exists nowhere else."/>
+            <RadioButton GroupName="texttransport" IsChecked="{Binding UseAndroid}"
+                         Content="From my Android phone, through the SMS Gateway app"
+                         FontSize="13"/>
+            <Border Classes="notice privacy" IsVisible="{Binding TextRouteBlocked}">
+              <TextBlock Text="{Binding TextRouteBlockedMessage}" TextWrapping="Wrap"
+                         FontSize="12.5" Foreground="{DynamicResource Ink2}"/>
+            </Border>
+          </StackPanel>
+
+          <!-- Twilio only -->
+          <StackPanel Spacing="12" IsVisible="{Binding UseTwilioForText}">
+            <Border Background="{DynamicResource AccentSoft}" CornerRadius="8" Padding="12,10">
+              <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource AccentInk}"
+                         Text="Texting everyone costs a few dollars, plus about $1.15 a month for the number. Twilio bills only what you send."/>
+            </Border>
+            <Border Background="{DynamicResource Surface2}" CornerRadius="8" Padding="12,10"
+                    BorderBrush="{DynamicResource Line}" BorderThickness="1">
+              <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource Ink2}"
+                         Text="A service cannot text from your own mobile number — carriers do not allow it. Choose a Twilio number in your area code so it reads as local, and set that number to forward replies to your phone. If you would rather messages genuinely came from your own number, pick one of the phone options above instead."/>
+            </Border>
+            <StackPanel Spacing="6">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Classes="eyebrow" Text="MESSAGING SERVICE (OPTIONAL — TURNS TEXTS INTO RCS)"/>
+                <Border Grid.Column="1" CornerRadius="20" Padding="9,2" VerticalAlignment="Center"
+                        Background="{DynamicResource GoodSoft}" IsVisible="{Binding SendsRichText}">
+                  <TextBlock Text="RCS on" FontSize="11" FontWeight="SemiBold"
+                             Foreground="{DynamicResource Good}"/>
+                </Border>
+              </Grid>
+              <TextBox Text="{Binding MessagingServiceSid}" Classes="mono" PlaceholderText="MG…"/>
+              <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource Ink3}"
+                         Text="Leave empty and texts go out as ordinary SMS. Paste a Twilio Messaging Service with an RCS sender on it and phones that support RCS get a named sender instead of an unknown number, while everyone else still gets the same SMS."/>
+            </StackPanel>
+          </StackPanel>
+
+          <!-- iPhone only -->
+          <Border Background="{DynamicResource WarnSoft}" CornerRadius="8" Padding="12,10"
+                  IsVisible="{Binding UseIphone}">
+            <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource Warn}"
+                       Text="This is how Phone Link works: the computer asks, your phone's line delivers. Free, and unmistakably from you — replies arrive in your own Messages app. Messages must be open and signed in, your iPhone needs Text Message Forwarding switched on for this Mac, and the first send will ask macOS for permission to control Messages. Keep it to a few dozen at a time; a burst of hundreds from a personal line is what carriers throttle."/>
+          </Border>
+
+          <!-- Android only -->
+          <StackPanel Spacing="9" IsVisible="{Binding UseAndroid}">
+            <Border Background="{DynamicResource WarnSoft}" CornerRadius="8" Padding="12,10">
+              <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource Warn}"
+                         Text="Install SMS Gateway for Android on your phone, turn on Local Server, and press Offline to start it. The app then shows an address and a username and password — copy them here. The phone must be awake and on the same Wi-Fi as this computer. Replies arrive in your own Messages app. Keep it to a few dozen at a time, as above."/>
+            </Border>
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12" RowDefinitions="Auto,Auto" RowSpacing="10">
+              <StackPanel Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Spacing="6">
+                <TextBlock Classes="eyebrow" Text="YOUR PHONE'S ADDRESS"/>
+                <TextBox Text="{Binding GatewayUrl}" Classes="mono"
+                         PlaceholderText="http://192.168.1.44:8080"/>
+              </StackPanel>
+              <StackPanel Grid.Row="1" Grid.Column="0" Spacing="6">
+                <TextBlock Classes="eyebrow" Text="USERNAME"/>
+                <TextBox Text="{Binding GatewayUser}" Classes="mono"/>
+              </StackPanel>
+              <StackPanel Grid.Row="1" Grid.Column="1" Spacing="6">
+                <TextBlock Classes="eyebrow" Text="PASSWORD"/>
+                <TextBox Text="{Binding GatewayPassword}" PasswordChar="•"/>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+
+          <Button Content="{Binding TestTextLabel}" HorizontalAlignment="Left"
+                  Command="{Binding TestTextCommand}" IsEnabled="{Binding !TwilioBusy}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- Phone calls -->
+    <Border Classes="card" Margin="0,14,0,0" Padding="0">
+      <StackPanel>
+        <Border Background="{DynamicResource Surface2}" Padding="15,13"
+                BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0" Spacing="1">
+              <TextBlock Text="Phone calls" FontWeight="SemiBold" FontSize="14"
+                         Foreground="{DynamicResource Ink}"/>
+              <TextBlock Text="Always through Twilio, playing a recording of your own voice"
+                         FontSize="12" Foreground="{DynamicResource Ink3}"/>
+            </StackPanel>
+
+          </Grid>
+        </Border>
+        <StackPanel Margin="15" Spacing="12">
+          <Border Background="{DynamicResource ChVoiceSoft}" CornerRadius="8" Padding="12,10">
+            <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource ChVoice}"
+                       Text="People who prefer a call hear the message itself — either read aloud, or in your own voice if you record it. Both are chosen on the Send screen, per message, because the message is the script. Calls use the Twilio account above even when your texts come from your own phone, and a verified caller ID there makes them show your real number."/>
+          </Border>
+          <Button Content="Call me to check this works" HorizontalAlignment="Left"
+                  Command="{Binding TestCallCommand}" IsEnabled="{Binding !TwilioBusy}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+
+    <!-- Updates -->
+    <Border Classes="card" Margin="0,14,0,0" Padding="0">
+      <StackPanel>
+        <Border Background="{DynamicResource Surface2}" Padding="15,13"
+                BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0" Spacing="1">
+              <TextBlock Text="Updates" FontWeight="SemiBold" FontSize="14"
+                         Foreground="{DynamicResource Ink}"/>
+              <TextBlock Text="Yours Truly checks GitHub and installs newer versions itself"
+                         FontSize="12" Foreground="{DynamicResource Ink3}"/>
+            </StackPanel>
+            <TextBlock Grid.Column="1" Text="{Binding CurrentVersion}" Classes="mono"
+                       VerticalAlignment="Center" Foreground="{DynamicResource Ink3}"/>
+          </Grid>
+        </Border>
+        <StackPanel Margin="15" Spacing="12">
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <Button Content="Check for updates" Command="{Binding CheckForUpdatesCommand}"
+                    IsEnabled="{Binding !UpdateBusy}"/>
+            <Button Classes="primary" Content="Restart and install"
+                    Command="{Binding RestartToUpdateCommand}" IsVisible="{Binding UpdateReady}"/>
+          </StackPanel>
+          <TextBlock Text="{Binding UpdateStatus}" TextWrapping="Wrap" FontSize="12.5"
+                     Foreground="{DynamicResource Ink2}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- Getting help -->
+    <Border Classes="card" Margin="0,14,0,0" Padding="0">
+      <StackPanel>
+        <Border Background="{DynamicResource Surface2}" Padding="15,13"
+                BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+          <StackPanel Spacing="1">
+            <TextBlock Text="If something goes wrong" FontWeight="SemiBold" FontSize="14"
+                       Foreground="{DynamicResource Ink}"/>
+            <TextBlock Text="Yours Truly keeps a record of what it was asked to do and what failed"
+                       FontSize="12" Foreground="{DynamicResource Ink3}"/>
+          </StackPanel>
+        </Border>
+        <StackPanel Margin="15" Spacing="12">
+          <Border Background="{DynamicResource Surface2}" CornerRadius="6" Padding="10,7"
+                  BorderBrush="{DynamicResource Line}" BorderThickness="1">
+            <TextBlock Text="{Binding LogFolder}" Classes="mono" TextWrapping="Wrap"
+                       Foreground="{DynamicResource Ink2}"/>
+          </Border>
+          <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource Ink2}"
+                     Text="Send this to whoever is helping you and they can see the sequence that led to a problem, rather than guessing. It is safe to share: it records which screens you opened, how many people were involved and what failed, but never a name, a phone number, an email address, or a word of any message you wrote."/>
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <Button Content="Copy the recent log" Command="{Binding CopyLogCommand}"
+                    IsVisible="{Binding CanCopyLog}"/>
+          </StackPanel>
+          <TextBlock Text="{Binding LogStatus}" FontSize="12.5" TextWrapping="Wrap"
+                     Foreground="{DynamicResource Good}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+    </StackPanel>
+  </ScrollViewer>
+
+  <Border Grid.Row="1" Background="{DynamicResource Surface2}"
+          BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="28,12">
+    <Grid ColumnDefinitions="Auto,Auto,*">
+      <Button Grid.Column="0" Classes="primary" Content="Save" Command="{Binding SaveCommand}"/>
+
+      <Border Grid.Column="1" CornerRadius="20" Padding="10,4" Margin="12,0,0,0"
+              VerticalAlignment="Center" Background="{DynamicResource WarnSoft}"
+              IsVisible="{Binding IsDirty}">
+        <TextBlock Text="Not saved yet" FontSize="12" FontWeight="SemiBold"
+                   Foreground="{DynamicResource Warn}"/>
+      </Border>
+      <Border Grid.Column="1" CornerRadius="20" Padding="10,4" Margin="12,0,0,0"
+              VerticalAlignment="Center" Background="{DynamicResource GoodSoft}"
+              IsVisible="{Binding !IsDirty}">
+        <TextBlock Text="Saved" FontSize="12" FontWeight="SemiBold"
+                   Foreground="{DynamicResource Good}"/>
+      </Border>
+
+      <TextBlock Grid.Column="2" VerticalAlignment="Center" Margin="14,0,0,0" FontSize="12"
+                 TextWrapping="Wrap" Foreground="{DynamicResource Ink3}"
+                 Text="Pressing any Test button saves as well, so you never lose what you just typed."/>
+    </Grid>
+  </Border>
+  </Grid>
+</UserControl>

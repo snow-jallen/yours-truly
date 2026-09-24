@@ -1,0 +1,19 @@
+bin/
+obj/
+*.user
+.DS_Store
+
+# Real exports of real people, and anything derived from one, never enter version
+# control. They hold phone numbers, e-mail addresses and birthdays for hundreds.
+tests/Courier.Tests/Fixtures/private/
+*.db
+*.db-shm
+*.db-wal
+settings.json
+
+# Pictures of each screen, written by the screenshot harness for looking at.
+.screenshots/
+
+# Isolated worktrees and the subagent-driven-development scratch workspace.
+.claude/worktrees/
+.superpowers/

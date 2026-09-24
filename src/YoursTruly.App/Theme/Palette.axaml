@@ -1,0 +1,75 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    The brand is two colours and an ink: purple #694293, salmon #E9A186, plum #381F51,
+    on cream #FCF3EE. Everything below is built out of those.
+
+    Two things the brand does not supply and the interface needs. A warning colour, kept
+    a dark amber rather than anything orange: salmon is a channel here, and a caution
+    that reads as the same hue as "text message" is worse than one slightly off-brand. A
+    third channel colour, since there are three channels and two brand hues — plum takes
+    it, which keeps the set on-brand and puts the darkest value on the channel that
+    interrupts people most.
+
+    The neutrals are warm rather than grey. A cool grey beside cream looks like a bug.
+  -->
+  <ResourceDictionary.ThemeDictionaries>
+
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="Ground"     Color="#FBF4F0"/>
+      <SolidColorBrush x:Key="Surface"    Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="Surface2"   Color="#F5EBE5"/>
+      <SolidColorBrush x:Key="Surface3"   Color="#EBDFD8"/>
+      <SolidColorBrush x:Key="Ink"        Color="#2E1A46"/>
+      <SolidColorBrush x:Key="Ink2"       Color="#5E4A72"/>
+      <SolidColorBrush x:Key="Ink3"       Color="#8B7C9B"/>
+      <SolidColorBrush x:Key="Line"       Color="#E6D9D2"/>
+      <SolidColorBrush x:Key="Line2"      Color="#D6C6BC"/>
+      <SolidColorBrush x:Key="Accent"     Color="#694293"/>
+      <SolidColorBrush x:Key="AccentInk"  Color="#4E2E70"/>
+      <SolidColorBrush x:Key="AccentSoft" Color="#EDE3F8"/>
+      <SolidColorBrush x:Key="OnAccent"   Color="#FFFFFF"/>
+      <SolidColorBrush x:Key="Good"       Color="#2C7A50"/>
+      <SolidColorBrush x:Key="GoodSoft"   Color="#DCEEE3"/>
+      <SolidColorBrush x:Key="Warn"       Color="#8A5A0B"/>
+      <SolidColorBrush x:Key="WarnSoft"   Color="#F7EACF"/>
+      <SolidColorBrush x:Key="Crit"       Color="#A32F44"/>
+      <SolidColorBrush x:Key="CritSoft"   Color="#F7DDE2"/>
+      <SolidColorBrush x:Key="ChEmail"    Color="#694293"/>
+      <SolidColorBrush x:Key="ChEmailSoft" Color="#EDE3F8"/>
+      <SolidColorBrush x:Key="ChText"     Color="#BE6337"/>
+      <SolidColorBrush x:Key="ChTextSoft" Color="#FAE5D9"/>
+      <SolidColorBrush x:Key="ChVoice"    Color="#381F51"/>
+      <SolidColorBrush x:Key="ChVoiceSoft" Color="#E5DCEE"/>
+    </ResourceDictionary>
+
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="Ground"     Color="#170F22"/>
+      <SolidColorBrush x:Key="Surface"    Color="#20162E"/>
+      <SolidColorBrush x:Key="Surface2"   Color="#291C3A"/>
+      <SolidColorBrush x:Key="Surface3"   Color="#342546"/>
+      <SolidColorBrush x:Key="Ink"        Color="#F3EAF7"/>
+      <SolidColorBrush x:Key="Ink2"       Color="#BEAACC"/>
+      <SolidColorBrush x:Key="Ink3"       Color="#8C7C9C"/>
+      <SolidColorBrush x:Key="Line"       Color="#322340"/>
+      <SolidColorBrush x:Key="Line2"      Color="#453252"/>
+      <SolidColorBrush x:Key="Accent"     Color="#BB9FDF"/>
+      <SolidColorBrush x:Key="AccentInk"  Color="#D4C0EF"/>
+      <SolidColorBrush x:Key="AccentSoft" Color="#2F2047"/>
+      <SolidColorBrush x:Key="OnAccent"   Color="#170F22"/>
+      <SolidColorBrush x:Key="Good"       Color="#5CBB82"/>
+      <SolidColorBrush x:Key="GoodSoft"   Color="#153223"/>
+      <SolidColorBrush x:Key="Warn"       Color="#D6A254"/>
+      <SolidColorBrush x:Key="WarnSoft"   Color="#352817"/>
+      <SolidColorBrush x:Key="Crit"       Color="#E38696"/>
+      <SolidColorBrush x:Key="CritSoft"   Color="#3A1E27"/>
+      <SolidColorBrush x:Key="ChEmail"    Color="#BB9FDF"/>
+      <SolidColorBrush x:Key="ChEmailSoft" Color="#2F2047"/>
+      <SolidColorBrush x:Key="ChText"     Color="#E9A186"/>
+      <SolidColorBrush x:Key="ChTextSoft" Color="#3B2519"/>
+      <SolidColorBrush x:Key="ChVoice"    Color="#A797BC"/>
+      <SolidColorBrush x:Key="ChVoiceSoft" Color="#2A2236"/>
+    </ResourceDictionary>
+
+  </ResourceDictionary.ThemeDictionaries>
+</ResourceDictionary>

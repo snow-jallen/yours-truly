@@ -1,0 +1,156 @@
+name: Release
+
+# Every push to main becomes a release. The version is 1.0.<run number>, which always
+# goes up and never has to be decided — Velopack only cares that it increases.
+#
+# Put [skip release] in the commit's subject line to push without building one. Only
+# the subject is read: a commit body that merely mentions the phrase — this file's own
+# history, for instance — should not stop a release.
+#
+# Each platform has to be packaged on itself — Velopack builds a Windows installer only
+# on Windows, and needs macOS's own tools for a .app bundle — so the matrix is three real
+# runners rather than one cross-compiling.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Two pushes in quick succession queue rather than race. Cancelling a half-finished
+# release would leave some platforms published and others not.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+      skip: ${{ steps.gate.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Work out the version
+        id: version
+        run: echo "value=1.0.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      - name: Is this one to release?
+        id: gate
+        run: |
+          subject=$(git log -1 --pretty=%s)
+          echo "subject: $subject"
+          if [[ "$subject" == *"[skip release]"* ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      # Nothing ships that the suite has not passed, including on a machine that has
+      # never seen a real directory — those tests skip rather than fail.
+      - run: dotnet test --configuration Release
+
+  package:
+    needs: test
+    if: needs.test.outputs.skip != 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            runtime: win-x64
+          - os: ubuntu-latest
+            runtime: linux-x64
+          - os: macos-latest
+            runtime: osx-arm64
+          # No Intel Mac build: those runners now queue for a long time and often never
+          # start, holding up every release for a machine nobody here is using. Add
+          # `{ os: macos-13, runtime: osx-x64 }` back if somebody turns out to need it.
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install the packaging tool
+        run: dotnet tool install -g vpk
+
+      - name: Publish
+        run: >
+          dotnet publish src/YoursTruly.App
+          -c Release
+          -r ${{ matrix.runtime }}
+          -o publish
+          -p:Version=${{ needs.test.outputs.version }}
+
+      - name: Package for Windows
+        if: startsWith(matrix.runtime, 'win')
+        run: >
+          vpk pack
+          --packId YoursTruly
+          --packVersion ${{ needs.test.outputs.version }}
+          --packDir publish
+          --mainExe YoursTruly.App.exe
+          --packTitle "Yours Truly"
+          --icon assets/yourstruly.ico
+          --runtime ${{ matrix.runtime }}
+
+      - name: Package for macOS
+        if: startsWith(matrix.runtime, 'osx')
+        run: >
+          vpk pack
+          --packId YoursTruly
+          --packVersion ${{ needs.test.outputs.version }}
+          --packDir publish
+          --mainExe YoursTruly.App
+          --packTitle "Yours Truly"
+          --icon assets/yourstruly.icns
+          --runtime ${{ matrix.runtime }}
+
+      - name: Package for Linux
+        if: startsWith(matrix.runtime, 'linux')
+        run: >
+          vpk pack
+          --packId YoursTruly
+          --packVersion ${{ needs.test.outputs.version }}
+          --packDir publish
+          --mainExe YoursTruly.App
+          --packTitle "Yours Truly"
+          --icon assets/yourstruly.png
+          --runtime ${{ matrix.runtime }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yourstruly-${{ matrix.runtime }}
+          path: Releases/*
+
+  publish:
+    needs: [test, package]
+    if: needs.test.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      # Velopack's own release files live alongside the installers: the app reads them
+      # to work out whether there is anything newer than what it is running.
+      - name: Gather everything into one folder
+        run: |
+          mkdir -p Releases
+          find artifacts -type f -exec cp -n {} Releases/ \;
+          ls -la Releases
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.test.outputs.version }}
+          name: Yours Truly ${{ needs.test.outputs.version }}
+          files: Releases/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true

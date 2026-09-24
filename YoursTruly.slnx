@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/YoursTruly.App/YoursTruly.App.csproj" />
+    <Project Path="src/YoursTruly.Core/YoursTruly.Core.csproj" />
+    <Project Path="src/YoursTruly.Data/YoursTruly.Data.csproj" />
+    <Project Path="src/YoursTruly.Messaging/YoursTruly.Messaging.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/YoursTruly.Tests/YoursTruly.Tests.csproj" />
+  </Folder>
+</Solution>
