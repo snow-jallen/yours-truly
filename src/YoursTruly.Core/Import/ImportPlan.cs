@@ -36,4 +36,9 @@ public sealed record ImportPlan(
     IReadOnlyList<string> Groups)
 {
     public int TotalInFile => Added.Count + Updated.Count + Reactivated.Count + Unchanged;
+
+    /// <summary>People the file can reach but could not name, who are therefore not in
+    /// any of the lists above. Almost always a sign the file was read wrongly rather
+    /// than a sign about the file — see <see cref="Normalizer.Unnamed"/>.</summary>
+    public int Unnamed { get; init; }
 }

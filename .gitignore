@@ -5,7 +5,10 @@ obj/
 
 # Real exports of real people, and anything derived from one, never enter version
 # control. They hold phone numbers, e-mail addresses and birthdays for hundreds.
-tests/Courier.Tests/Fixtures/private/
+# Matched by name rather than by path: the project has been renamed once already, and
+# that rename left this line pointing at a folder that no longer existed, so the real
+# exports stopped being ignored and nothing said so.
+**/Fixtures/private/
 *.db
 *.db-shm
 *.db-wal

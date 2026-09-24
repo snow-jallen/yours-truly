@@ -170,11 +170,32 @@ public sealed partial class ImportViewModel : ObservableObject
     [ObservableProperty] private string _mappingProblem = "";
     [ObservableProperty] private string _groupLine = "";
 
-    /// <summary>Whether the Import button does anything. Three things have to be true,
+    /// <summary>What the file could reach but could not name. Said on screen whenever
+    /// it is not zero, because the alternative — importing the people it managed and
+    /// saying nothing about the rest — is how a misread file used to get through.</summary>
+    [ObservableProperty] private string _namelessNote = "";
+
+    public bool HasNamelessNote => NamelessNote.Length > 0;
+
+    partial void OnNamelessNoteChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasNamelessNote));
+        OnPropertyChanged(nameof(IsReady));
+    }
+
+    /// <summary>Set when so much of the file came back nameless that the read itself is
+    /// in doubt. A few missing names is a fact about the file; most of them missing is
+    /// a fact about the app, and importing the remainder would quietly throw away
+    /// everybody else.</summary>
+    [ObservableProperty] private bool _readLooksWrong;
+
+    partial void OnReadLooksWrongChanged(bool value) => OnPropertyChanged(nameof(IsReady));
+
+    /// <summary>Whether the Import button does anything. Four things have to be true,
     /// and every one of them has to tell the screen when it changes — a stale IsReady
     /// is a disabled button with nothing on screen explaining why, which is the worst
     /// way for this to fail. See OnTargetChanged, which once forgot.</summary>
-    public bool IsReady => MappingProblem.Length == 0 && HasFile && HasTarget;
+    public bool IsReady => MappingProblem.Length == 0 && HasFile && HasTarget && !ReadLooksWrong;
 
     partial void OnMappingProblemChanged(string value) => OnPropertyChanged(nameof(IsReady));
     partial void OnHasFileChanged(bool value) => OnPropertyChanged(nameof(IsReady));
@@ -210,16 +231,17 @@ public sealed partial class ImportViewModel : ObservableObject
             FileDetail = $"{sheet.PageCount} pages · {sheet.Rows.Count} rows · {sheet.Columns.Count} columns";
             ShapeNote = sheet.Shape switch
             {
-                SheetShape.Records =>
+                SheetShape.Directory =>
                     "This is a printed directory rather than a table, so it was read as blocks of "
                     + "people: a household, then everybody under it. Names, email addresses and "
                     + "phone numbers are all it can take from a file like this — check the samples "
                     + "below, and expect people with no way of being reached, who are in the "
                     + "printout and can have a number added later.",
-                SheetShape.Loose =>
-                    "This file has no heading row and no blocks the app could find, so it was read "
-                    + "by looking for email addresses and phone numbers and taking whatever was "
-                    + "left on the line as the name. Check the samples below before importing.",
+                SheetShape.Records =>
+                    "This file has no heading row, so it was read as one record per person, found "
+                    + "by their email addresses and phone numbers and by where each record puts "
+                    + "the name relative to them. Names, email addresses and phone numbers are all "
+                    + "it can take from a file like this — check the samples below before importing.",
                 _ => "",
             };
             HasFile = true;
@@ -255,6 +277,24 @@ public sealed partial class ImportViewModel : ObservableObject
         {
             Busy = false;
         }
+    }
+
+    /// <summary>Says how many rows carried an address or a number but no name, and
+    /// decides whether that is a patchy file or a misread one.</summary>
+    private void NoteTheNameless(int unnamed, int rows)
+    {
+        ReadLooksWrong = unnamed * 2 > rows;
+        NamelessNote = unnamed == 0
+            ? ""
+            : ReadLooksWrong
+                ? $"{unnamed} of {rows} rows have an email address or a phone number but no name the "
+                  + "app could find, which usually means this layout has been read wrongly rather "
+                  + "than that the file is missing names. Importing it would silently leave those "
+                  + "people out, so it is not offered. Choosing the columns by hand above may fix "
+                  + "it; if it does not, the file is worth reporting."
+                : $"{unnamed} of {rows} rows have an email address or a phone number but no name, "
+                  + "so they cannot be imported — there would be nothing to match them on and "
+                  + "nothing to address a message to. Everybody else below is unaffected.";
     }
 
     /// <summary>Re-plans after a drop-down changes. Nothing is waiting on the answer —
@@ -293,6 +333,8 @@ public sealed partial class ImportViewModel : ObservableObject
             _plan = null;
             InFile = Added = Updated = Deactivated = Unchanged = 0;
             GroupLine = "";
+            NamelessNote = "";
+            ReadLooksWrong = false;
             Status = "";
             return;
         }
@@ -304,6 +346,7 @@ public sealed partial class ImportViewModel : ObservableObject
         _plan = plan;
 
         InFile = plan.TotalInFile;
+        NoteTheNameless(plan.Unnamed, plan.TotalInFile + plan.Unnamed);
         Added = plan.Added.Count;
         Updated = plan.Updated.Count;
         Deactivated = plan.Deactivated.Count;
@@ -327,9 +370,14 @@ public sealed partial class ImportViewModel : ObservableObject
               + string.Join(", ", plan.Groups.Take(8))
               + (plan.Groups.Count > 8 ? $" and {plan.Groups.Count - 8} more" : "");
 
-        Status = Added + Updated + Deactivated + plan.Reactivated.Count == 0
-            ? "Nothing in this file has changed since the last import."
-            : "Nothing has been saved yet.";
+        // "Nothing has changed" is true of a file nobody could be found in, and it is
+        // the wrong thing to say about it — next to the warning above it reads as
+        // reassurance.
+        Status = ReadLooksWrong
+            ? "This file has not been read properly, so nothing can be imported from it."
+            : Added + Updated + Deactivated + plan.Reactivated.Count == 0
+                ? "Nothing in this file has changed since the last import."
+                : "Nothing has been saved yet.";
     }
 
     private ImportMapping Mapping() =>

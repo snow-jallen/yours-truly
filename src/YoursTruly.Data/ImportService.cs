@@ -22,7 +22,10 @@ public sealed class ImportService(AppDbContext db)
     {
         var incoming = Normalizer.Normalize(sheet, mapping, defaultAreaCode);
         var existing = await DirectoryService.ExistingPeople(db).ToListAsync(cancellation);
-        return ImportPlanner.Plan(incoming, existing, mapping, deactivateMissing);
+        return ImportPlanner.Plan(incoming, existing, mapping, deactivateMissing) with
+        {
+            Unnamed = Normalizer.Unnamed(sheet, mapping, defaultAreaCode),
+        };
     }
 
     /// <summary>Writes the plan. Everything lands or nothing does.</summary>

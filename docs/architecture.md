@@ -135,17 +135,67 @@ printout lists them, and a number can be added later.
 
 ### When there is no table at all
 
-A file with no heading row Yours Truly can find is searched line by line for an e-mail
-address and a phone number, and whatever is left on the line is the name. Only lines
-carrying a way of reaching somebody are kept — without a heading there is nothing to say
-a line of prose is not a person, and a page of prose would otherwise import as a hundred
-people with no contact details. The sheet says `HeadingsFound: false`, and the import
-screen says so out loud, because those columns are Yours Truly's invention and not the
-file's.
+This used to be a line-by-line hunt: search each line for an address and a number, take
+whatever is left as the name. It was the worst thing in the importer, because **it never
+failed**. It swallowed every file the two readers above it could not manage and imported
+whatever fell out, so a file it had misread completely looked exactly like a file it had
+read perfectly. Five test layouts holding fifteen people each came back as 15, 5, 11, 15
+and 15 people — with names like `COMLINK MESSAGE ADDRESS` — every one of them reporting
+no problem at all.
+
+The mistake was reading *lines*. What a page of people actually has is a **repeating
+record** — a table row, a card, a form, a stanza — and the layout is the only thing that
+varies. `RecordReader` finds the records, on four ideas:
+
+1. **Anchor on the contact details.** An e-mail address announces itself, so *n*
+   addresses means *n* records. That alone fixes the counting. A phone number does the
+   job where a file carries no addresses.
+2. **Give every run to its nearest anchor, in units measured from the anchors
+   themselves.** A table's records are wide and short and a grid of cards is neither, so
+   the spacing is measured (the median gap between anchors, across and down) rather than
+   assumed. That is what lets one rule fit both.
+3. **Take the name off the *front* of a run.** A run usually carries the name and then
+   something else — `Padme Amidala SW-011`, `Luke Skywalker Tatooine Human` — so asking
+   whether a whole run is a name throws those away. `PersonName.LeadingName` takes the
+   leading name-shaped words, which is mostly a matter of what a name is *not*: the
+   lower-case letter it insists on is what rejects a heading, an id and a `KEY=VALUE`
+   without knowing anything about any of them.
+4. **Look for the name at the offset the records agree on.** In a repeating layout every
+   record puts the name in the same place relative to its address, and the records vote.
+   That is what tells a name column from an affiliation column, and what lets a one-word
+   name win over the `Rebel Alliance` printed beside it. The search runs over every run
+   on the page rather than only the ones this record was awarded — in a two-up directory
+   both names on a line sit nearer the left-hand record, and an exclusive carve-up leaves
+   the right-hand person nameless.
+
+The order matters and is the reverse of how much each reader knows. A heading row says
+what the columns *mean*, which no amount of geometry can work out, so `Table` goes first.
+A directory's households carry the hundreds of people with no contact details at all,
+whom anchoring would never see, so `RecordBlockReader` goes second. Anchoring is last.
+
+The sheet says `HeadingsFound: false` for both of the lower two, and the import screen
+says so out loud, because those columns are Yours Truly's invention and not the file's.
+
+### Failing honestly
+
+A reader that cannot fail is worse than one that does, so the bottom of the stack now
+returns nothing rather than guessing, and what does come through is counted.
+
+A misread loses **names** first: an address survives any misreading because it announces
+itself, and a name has no syntax at all. So the number of rows carrying an address or a
+number but no name — `Normalizer.Unnamed`, on the plan as `ImportPlan.Unnamed` — is the
+honest measure of a bad read, and the import screen prints it. Where it is more than half
+the file the read itself is in doubt, and the Import button is withheld rather than
+quietly importing the remainder and losing everybody else.
 
 A PDF with nobody findable in it fails loudly with `ImportException`, naming what was
 looked for — and naming a scanned picture of a list, which is the failure most worth
 calling out: it looks like exactly the right file and has no text in it whatsoever.
+
+The five layouts in `tests/YoursTruly.Tests/Fixtures/layouts/` — the same fifteen
+invented people printed as a table, as cards, as a two-up directory, as forms and as a
+mainframe dump — are the regression set. None of them is taught to the reader. **If a
+sixth turns up and fails, the answer is not a sixth reader.**
 
 ## What the columns mean
 

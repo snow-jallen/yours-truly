@@ -60,4 +60,20 @@ internal static class SyntheticRoster
         Put("Please keep this list to yourself.", 600);
         return builder.Build();
     }
+
+    /// <summary>A list the app can reach but cannot name: everybody is an id and a way
+    /// of contacting them, and nothing on the page is name-shaped. What a badly-read
+    /// file looks like, because the addresses survive any misreading and the names do
+    /// not.</summary>
+    public static byte[] Nameless()
+    {
+        var builder = new PdfDocumentBuilder();
+        var page = builder.AddPage(612, 792);
+        var font = builder.AddStandard14Font(Standard14Font.Helvetica);
+        void Put(string text, double y) => page.AddText(text, 11, new PdfPoint(60, y), font);
+
+        for (var i = 0; i < 5; i++)
+            Put($"REF-{i:000}   ref{i:000}@example.com   (435) 555-01{i:00}", 700 - i * 22);
+        return builder.Build();
+    }
 }

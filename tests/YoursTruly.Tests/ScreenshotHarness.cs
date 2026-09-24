@@ -89,6 +89,17 @@ public sealed class ScreenshotHarness(ITestOutputHelper output) : IDisposable
         model.Current = importing;
         Shoot(window, "1-import");
 
+        // And the same screen refusing a file it could not read. This one is worth a
+        // picture of its own: it is a wall of warning text where there is normally a
+        // table, and it is the screen nobody sees until something has gone wrong.
+        var unreadable = Path.Combine(_folder, "unreadable.pdf");
+        File.WriteAllBytes(unreadable, SyntheticRoster.Nameless());
+        var refusing = new ImportViewModel(
+            services, new NoFiles(), store, (_, _) => { }, () => Task.CompletedTask);
+        await refusing.LoadAsync(unreadable);
+        model.Current = refusing;
+        Shoot(window, "1b-import-unreadable");
+
         // What somebody sees on a fresh install, before there is any list at all.
         var nothing = new NoListViewModel(
             import: () => Task.CompletedTask, openExisting: () => Task.CompletedTask,
@@ -102,7 +113,7 @@ public sealed class ScreenshotHarness(ITestOutputHelper output) : IDisposable
 
         var shots = Directory.GetFiles(_folder, "*.png");
         output.WriteLine($"FOLDER {_folder} — {shots.Length} images");
-        Assert.Equal(10, shots.Length);
+        Assert.Equal(11, shots.Length);
         Assert.All(shots, f => Assert.True(new FileInfo(f).Length > 5000, $"{f} is suspiciously small"));
             return 0;
         };

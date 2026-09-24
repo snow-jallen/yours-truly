@@ -18,6 +18,13 @@ public sealed record NormalizedPerson(
     IReadOnlyList<string> Groups)
 {
     public string SortName => $"{LastName}, {FirstName}";
+
+    /// <summary>Whether the file gave this person a name at all. A row without one
+    /// cannot be imported — there is nothing to match them on and nothing to address a
+    /// message to — but it must be counted rather than quietly dropped.</summary>
+    public bool IsNamed => LastName.Length > 0 || FirstName.Length > 0;
+
+    public bool CanBeReached => Email is not null || PhoneRaw is not null;
 }
 
 /// <summary>Turns what a file printed into what the app stores: a name split in two, a
@@ -31,14 +38,30 @@ public static partial class Normalizer
     public static IReadOnlyList<NormalizedPerson> Normalize(
         ContactSheet sheet, ImportMapping mapping, string defaultAreaCode = DefaultAreaCode)
     {
+        return [.. Everybody(sheet, mapping, defaultAreaCode).Where(p => p.IsNamed)];
+    }
+
+    /// <summary>How many people the file can reach but cannot name.
+    ///
+    /// These are dropped by <see cref="Normalize"/>, and the count is what stops that
+    /// being a silent loss. A reader that has misread the page usually still finds the
+    /// email addresses — they are unmistakable — and fails on the names, which have no
+    /// syntax at all. So this number is the honest measure of a bad read, and the
+    /// import screen says it out loud instead of showing a green button over half a
+    /// list.</summary>
+    public static int Unnamed(
+        ContactSheet sheet, ImportMapping mapping, string defaultAreaCode = DefaultAreaCode) =>
+        Everybody(sheet, mapping, defaultAreaCode).Count(p => !p.IsNamed && p.CanBeReached);
+
+    private static IEnumerable<NormalizedPerson> Everybody(
+        ContactSheet sheet, ImportMapping mapping, string defaultAreaCode)
+    {
         // "Ashgrove, Adelaide" or "Adelaide Ashgrove" — decided from the file rather
         // than assumed, and only where the whole name is in one column.
         var nameColumn = mapping.ColumnFor(ImportField.Name);
         var surnameFirst = nameColumn is int c && ContactSheetReader.CommaNames(sheet.Rows, c);
 
-        return [.. sheet.Rows
-            .Select(row => Normalize(row, mapping, surnameFirst, defaultAreaCode))
-            .Where(p => p.LastName.Length > 0 || p.FirstName.Length > 0)];
+        return sheet.Rows.Select(row => Normalize(row, mapping, surnameFirst, defaultAreaCode));
     }
 
     private static NormalizedPerson Normalize(

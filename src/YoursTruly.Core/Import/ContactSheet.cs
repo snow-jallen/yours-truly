@@ -44,10 +44,11 @@ public enum SheetShape
 
     /// <summary>A printed directory: blocks of people laid out in bands down the page,
     /// with no table anywhere in it.</summary>
-    Records,
+    Directory,
 
-    /// <summary>Neither, so every line was searched for an address and a number.</summary>
-    Loose,
+    /// <summary>Neither, so the page was read as repeated records laid out around the
+    /// contact details — see <see cref="RecordReader"/>.</summary>
+    Records,
 }
 
 /// <summary>A file that could not be read as a list of people.</summary>

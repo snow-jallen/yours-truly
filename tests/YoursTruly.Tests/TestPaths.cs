@@ -16,6 +16,11 @@ internal static class TestPaths
         }
     }
 
+    /// <summary>One of the five committed layout fixtures. These hold no real people,
+    /// so unlike the exports below they are always present.</summary>
+    public static string Layout(string name) =>
+        Path.Combine(RepoRoot ?? ".", "tests", "YoursTruly.Tests", "Fixtures", "layouts", name);
+
     /// <summary>A real LCR export, if one has been placed in the gitignored folder.
     /// Null on a machine that has never seen the real directory.</summary>
     public static string? RealReport
@@ -36,6 +41,18 @@ internal static class TestPaths
         {
             if (RepoRoot is null) return null;
             var path = Path.Combine(RepoRoot, "tests", "YoursTruly.Tests", "Fixtures", "private", "manti-callings.pdf");
+            return File.Exists(path) ? path : null;
+        }
+    }
+
+    /// <summary>A real printed directory — households in bands down the page, no table
+    /// anywhere in it — if one has been placed in the gitignored folder.</summary>
+    public static string? RealDirectory
+    {
+        get
+        {
+            if (RepoRoot is null) return null;
+            var path = Path.Combine(RepoRoot, "tests", "YoursTruly.Tests", "Fixtures", "private", "manti-directory.pdf");
             return File.Exists(path) ? path : null;
         }
     }
@@ -71,6 +88,17 @@ public sealed class RequiresRealCallingsReportAttribute : FactAttribute
     {
         if (TestPaths.RealCallingsReport is null)
             Skip = "No Organizations and Callings export in tests/YoursTruly.Tests/Fixtures/private/ — see the README in tests/YoursTruly.Tests/Fixtures/.";
+    }
+}
+
+/// <summary>Marks a test that needs a real printed directory and skips it when none
+/// is present.</summary>
+public sealed class RequiresRealDirectoryAttribute : FactAttribute
+{
+    public RequiresRealDirectoryAttribute()
+    {
+        if (TestPaths.RealDirectory is null)
+            Skip = "No printed directory in tests/YoursTruly.Tests/Fixtures/private/ — see the README in tests/YoursTruly.Tests/Fixtures/.";
     }
 }
 

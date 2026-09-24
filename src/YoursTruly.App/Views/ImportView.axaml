@@ -90,6 +90,13 @@
                          Foreground="{DynamicResource Warn}"/>
             </Border>
 
+            <!-- IsVisible on the Border, not on the TextBlock: on the TextBlock the box
+                 still paints its background and padding, and you get an empty panel. -->
+            <Border Classes="notice caution" IsVisible="{Binding HasNamelessNote}">
+              <TextBlock Text="{Binding NamelessNote}" FontSize="12.5" TextWrapping="Wrap" MaxWidth="760"
+                         Foreground="{DynamicResource Warn}"/>
+            </Border>
+
             <TextBlock Text="{Binding GroupLine}" FontSize="12.5" TextWrapping="Wrap" MaxWidth="760"
                        Foreground="{DynamicResource Ink2}"
                        IsVisible="{Binding GroupLine, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>

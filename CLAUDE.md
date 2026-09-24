@@ -98,6 +98,17 @@ Notes never appear there. A note is nobody else's business.
   whole of one.
 - Plan first, apply second. `ImportPlanner` computes; `ImportService` writes, in one
   transaction. The user sees the plan before anything lands.
+- **A reader must be able to fail.** Three readers try in order — `Table`, then
+  `RecordBlockReader`, then `RecordReader` — and each returns null rather than guessing.
+  The line-by-line hunt that used to sit at the bottom never failed, so it hid every
+  failure above it and imported fifteen people called `COMLINK MESSAGE ADDRESS` behind a
+  green button.
+- Rows carrying an address or a number but no name are **counted and shown**
+  (`ImportPlan.Unnamed`), not silently dropped. Names are what a misread loses first.
+- **Do not add a reader for a layout.** The five files in
+  `tests/YoursTruly.Tests/Fixtures/layouts/` are fifteen people printed five ways and
+  none of them is taught to the reader; a sixth that fails means the general rule is
+  wrong. See docs/architecture.md.
 
 ## Schema
 

@@ -44,11 +44,14 @@ public static partial class ContactSheetReader
         var rowBreak = PdfTableReader.RowBreak([.. pages.SelectMany(p => p)]);
 
         // A table if it has a heading row; a printed directory if it is blocks of
-        // people in bands; and failing both, every line searched for an address and a
-        // number. In that order, because each knows more than the one after it.
+        // people in bands; and failing both, repeated records found by anchoring on
+        // the contact details. In that order, because each knows more than the one
+        // after it: a heading row says what the columns *mean*, which no amount of
+        // geometry can work out, and a directory's households carry people with no
+        // contact details at all, whom anchoring would never see.
         var sheet = ReadTable(pages, rowBreak, pageCount, fileName, sha)
-                 ?? ReadRecords(pages, pageCount, fileName, sha)
-                 ?? ReadLoosely(pages, rowBreak, pageCount, fileName, sha);
+                 ?? ReadDirectory(pages, pageCount, fileName, sha)
+                 ?? ReadAnchored(pages, pageCount, fileName, sha);
 
         return sheet ?? throw new ImportException(
             $"Yours Truly could not find any people in '{fileName}'. It looks for a table with a heading " +
@@ -193,10 +196,33 @@ public static partial class ContactSheetReader
 
     // --- a printed directory rather than a table --------------------------------------
 
-    private static ContactSheet? ReadRecords(
+    private static ContactSheet? ReadDirectory(
         IReadOnlyList<IReadOnlyList<TextLine>> pages, int pageCount, string fileName, string sha)
     {
         var rows = RecordBlockReader.Read(pages);
+        return rows is null
+            ? null
+            : new ContactSheet(["Name", "Email", "Phone"], rows, pageCount, fileName, sha)
+            {
+                Shape = SheetShape.Directory,
+            };
+    }
+
+    // --- no headings: repeated records ------------------------------------------------
+
+    /// <summary>The last resort, and the one that makes "anything with names, e-mails
+    /// and phone numbers" true.
+    ///
+    /// This used to be a line-by-line hunt, and it was the worst thing in the importer:
+    /// it never failed, so it silently swallowed every file the readers above it could
+    /// not manage, and imported whatever fell out — five people from a file holding
+    /// fifteen, names like "COMLINK MESSAGE ADDRESS" — behind a green Import button.
+    /// <see cref="RecordReader"/> finds the records instead of the lines, and returns
+    /// null rather than guessing.</summary>
+    private static ContactSheet? ReadAnchored(
+        IReadOnlyList<IReadOnlyList<TextLine>> pages, int pageCount, string fileName, string sha)
+    {
+        var rows = RecordReader.Read(pages);
         return rows is null
             ? null
             : new ContactSheet(["Name", "Email", "Phone"], rows, pageCount, fileName, sha)
@@ -205,65 +231,4 @@ public static partial class ContactSheetReader
             };
     }
 
-    // --- no headings: hunt for addresses --------------------------------------------
-
-    /// <summary>The last resort, and the one that makes "anything with names, e-mails
-    /// and phone numbers" true: no heading row, so every line is searched for an
-    /// e-mail address and a phone number, and whatever is left of it is the name.
-    ///
-    /// Only rows carrying a way of reaching somebody are kept. Without a heading there
-    /// is nothing to say a line of prose is not a person, and a page of prose would
-    /// otherwise import as a hundred people with no contact details.</summary>
-    private static ContactSheet? ReadLoosely(
-        IReadOnlyList<IReadOnlyList<TextLine>> pages, double rowBreak,
-        int pageCount, string fileName, string sha)
-    {
-        var rows = new List<SheetRow>();
-
-        for (var i = 0; i < pages.Count; i++)
-            foreach (var group in PdfTableReader.GroupIntoRows(pages[i], rowBreak))
-            {
-                var text = TextLine.Collapse(string.Join(' ', group
-                    .OrderByDescending(l => l.Baseline)
-                    .Select(l => l.Text)));
-                if (text.Length == 0) continue;
-
-                var email = EmailAnywhere().Match(text);
-                var phone = PhoneAnywhere().Match(text);
-                if (!email.Success && !phone.Success) continue;
-
-                var name = TextLine.Collapse(Leftover(text, email, phone));
-                if (name.Length == 0 || !name.Any(char.IsLetter)) continue;
-
-                rows.Add(new SheetRow([name, email.Value, phone.Value.Trim()], i + 1));
-            }
-
-        return rows.Count == 0
-            ? null
-            : new ContactSheet(["Name", "Email", "Phone"], rows, pageCount, fileName, sha)
-            {
-                Shape = SheetShape.Loose,
-            };
-    }
-
-    private static string Leftover(string text, Match email, Match phone)
-    {
-        var keep = new System.Text.StringBuilder();
-        for (var i = 0; i < text.Length; i++)
-        {
-            if (email.Success && i >= email.Index && i < email.Index + email.Length) continue;
-            if (phone.Success && i >= phone.Index && i < phone.Index + phone.Length) continue;
-            keep.Append(text[i]);
-        }
-        return keep.ToString().Trim(' ', ',', ';', '|', '-', '\t');
-    }
-
-    [GeneratedRegex(@"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}")]
-    private static partial Regex EmailAnywhere();
-
-    /// <summary>Ten or eleven digits, however they have been punctuated, with an
-    /// optional country code. Deliberately narrow: a loose pattern turns every date and
-    /// every house number into a phone number.</summary>
-    [GeneratedRegex(@"(?<![\d-])(\+?1[ .\-]?)?\(?\d{3}\)?[ .\-]\d{3}[ .\-]\d{4}(?![\d-])")]
-    private static partial Regex PhoneAnywhere();
 }

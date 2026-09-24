@@ -151,6 +151,34 @@ public sealed class UserInterfaceTests : IDisposable
     }, _folder);
 
     [Fact]
+    public Task A_file_it_could_not_read_says_so_instead_of_offering_an_import() =>
+        InWindow(async (window, model) =>
+        {
+            var import = Importing();
+            model.Current = import;
+
+            var refs = Path.Combine(_folder, "refs.pdf");
+            File.WriteAllBytes(refs, SyntheticRoster.Nameless());
+            await import.LoadAsync(refs);
+
+            // Five people it can reach and none it can name. The old reader would have
+            // shown a green button over an import of nobody at all.
+            Assert.False(import.IsReady);
+            Assert.True(import.ReadLooksWrong);
+            Assert.Contains("5 of 5", import.NamelessNote, StringComparison.Ordinal);
+
+            // And on screen, not merely on the view model — this warning is the whole
+            // safeguard, so a collapsed ancestor would undo it.
+            Dispatcher.UIThread.RunJobs();
+            window.Measure(window.ClientSize);
+            window.Arrange(new Rect(window.ClientSize));
+
+            var shown = window.GetVisualDescendants().OfType<TextBlock>()
+                .Where(OnScreen).Select(t => t.Text ?? "").ToList();
+            Assert.Contains(shown, t => t.Contains("5 of 5", StringComparison.Ordinal));
+        }, _folder);
+
+    [Fact]
     public Task The_import_screen_shows_what_it_made_of_each_column() =>
         InWindow(async (window, model) =>
         {

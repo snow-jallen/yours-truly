@@ -18,7 +18,7 @@ public sealed class DirectoryPrintoutTests
     public void Recognises_a_printout_that_is_not_a_table()
     {
         var sheet = Sheet();
-        Assert.Equal(SheetShape.Records, sheet.Shape);
+        Assert.Equal(SheetShape.Directory, sheet.Shape);
         Assert.Equal(["Name", "Email", "Phone"], sheet.Columns);
     }
 
@@ -96,6 +96,25 @@ public sealed class DirectoryPrintoutTests
         // must not claim anything the other two should have had.
         Assert.Equal(SheetShape.Table, SheetHelp.Read(SyntheticReport.Build(), "table.pdf").Shape);
         Assert.Equal(SheetShape.Table, SheetHelp.Read(SyntheticRoster.Table(), "roster.pdf").Shape);
-        Assert.Equal(SheetShape.Loose, SheetHelp.Read(SyntheticRoster.Loose(), "tree.pdf").Shape);
+        Assert.Equal(SheetShape.Records, SheetHelp.Read(SyntheticRoster.Loose(), "tree.pdf").Shape);
+    }
+
+    [RequiresRealDirectory]
+    public void The_real_printed_directory_still_reads_as_a_directory()
+    {
+        // Thirty-two pages of households, the file this reader was written for. It is
+        // read before the record reader underneath it and has to stay that way: it
+        // finds the hundreds of people who have no email address and no phone number
+        // at all, and anchoring on contact details would never see one of them.
+        var sheet = ContactSheetReader.Read(TestPaths.RealDirectory!);
+        Assert.Equal(SheetShape.Directory, sheet.Shape);
+
+        var people = sheet.People();
+        Assert.InRange(people.Count, 400, 500);
+
+        // Individuals, not households. Read as one row per printed block it came back
+        // with well under half this many.
+        Assert.InRange(people.Select(p => p.LastName).Distinct().Count(), 100, 300);
+        Assert.All(people, p => Assert.NotEqual("", p.LastName));
     }
 }
