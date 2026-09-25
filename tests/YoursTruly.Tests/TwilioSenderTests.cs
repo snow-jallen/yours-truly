@@ -159,6 +159,61 @@ public sealed class TwilioSenderTests
         Assert.DoesNotContain(code.ToString(), outcome.Error!, StringComparison.Ordinal);
     }
 
+    /// <summary>The message a real trial account answered with, verbatim. It arrived
+    /// under a code TwilioProblem did not know, so the user was shown Twilio's own
+    /// sentence — "No Twilio trial phone number is assigned for messaging to this
+    /// destination number" — which tells somebody without a Twilio account nothing at
+    /// all about what to go and do.</summary>
+    private const string TrialRefusal =
+        "No Twilio trial phone number is assigned for messaging to this destination number. "
+        + "Please add the 'to' number as a verified recipient.";
+
+    [Theory]
+    [InlineData(21608, "The number +16023344328 is unverified. Trial accounts cannot send messages to unverified numbers.")]
+    // Any code at all: what identifies a trial restriction is what Twilio says, not the
+    // number it files it under, and it has filed this under more than one.
+    [InlineData(30044, TrialRefusal)]
+    [InlineData(21660, TrialRefusal)]
+    public async Task A_trial_account_is_told_which_console_screens_to_open(int code, string twilioSaid)
+    {
+        var sender = new TextSender(new FakeTwilio(Api(code, twilioSaid)), Configured);
+        var outcome = await sender.SendAsync("+16023344328", Message);
+
+        Assert.Equal(SendStatus.Failed, outcome.Status);
+
+        // Named screens, because this is a setup that has never worked rather than one
+        // thing going wrong, and "verify the number" does not say where.
+        Assert.Contains("Verified Caller IDs", outcome.Error!, StringComparison.Ordinal);
+        Assert.Contains("+16023344328", outcome.Error!, StringComparison.Ordinal);
+        Assert.Contains("Active numbers", outcome.Error!, StringComparison.Ordinal);
+
+        // And never Twilio's own words, which is the whole point.
+        Assert.DoesNotContain("destination number", outcome.Error!, StringComparison.Ordinal);
+        Assert.DoesNotContain(code.ToString(), outcome.Error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_messaging_service_is_named_as_the_likely_cause_when_one_is_set()
+    {
+        // The trap worth calling out: a Messaging Service overrides the Twilio number
+        // entirely, so a service with an empty Sender Pool fails exactly like having no
+        // number at all — and the Setup screen still shows a perfectly good number.
+        var sender = new TextSender(new FakeTwilio(Api(30044, TrialRefusal)), WithRichText);
+        var outcome = await sender.SendAsync("+16023344328", Message);
+
+        Assert.Contains("Sender Pool", outcome.Error!, StringComparison.Ordinal);
+        Assert.Contains("Clear the Messaging Service SID", outcome.Error!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_plain_setup_is_not_told_to_clear_a_messaging_service_it_has_not_set()
+    {
+        var sender = new TextSender(new FakeTwilio(Api(30044, TrialRefusal)), Configured);
+        var outcome = await sender.SendAsync("+16023344328", Message);
+
+        Assert.DoesNotContain("Sender Pool", outcome.Error!, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Running_out_of_credit_says_so_in_those_words()
     {

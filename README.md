@@ -100,6 +100,26 @@ build rather than the user. If you drop a genuine export in
 check that every person the file's own footer counts comes back with a readable name,
 phone, e-mail and birthday.
 
+## Testing with a Twilio trial account
+
+A trial can only text numbers you have **verified**, and it needs a Twilio number of its
+own that can send texts. In the console: **Phone Numbers → Manage → Verified Caller IDs**
+to add each number you want to reach (choose SMS as the verification method — you need
+that handset to read the code), and **Phone Numbers → Manage → Active numbers** to check
+you own an SMS-capable number. Put that number in Setup. Trials allow five verified
+numbers, only reach your signup country, and prefix every message with "Sent from your
+Twilio trial account - ", which eats into the 160 characters of a single text.
+
+One trap worth knowing: if **Messaging Service SID** is filled in, Yours Truly sends
+through that service and the Twilio number is **ignored** — a service and an explicit
+sender are mutually exclusive, or the RCS routing that the service is for stops working.
+So a service with an empty Sender Pool fails as though you had no number at all, while
+Setup goes on showing a perfectly good one. Clear the field to get plain texts working
+first.
+
+Yours Truly says all of this itself when Twilio refuses, rather than passing Twilio's
+own wording through.
+
 ## Gmail's daily limit
 
 Gmail will not slow you down as you approach its cap. It refuses outright, and then
