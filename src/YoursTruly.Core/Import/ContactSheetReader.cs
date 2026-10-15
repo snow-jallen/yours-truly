@@ -116,16 +116,33 @@ public static partial class ContactSheetReader
     /// that column, so a line starting to the left of it is not in the table. That is
     /// what a report's footer looks like — a date at the very edge of the page, a
     /// copyright notice, a page number — and it catches them without anybody having to
-    /// list the wording, which changes with the report and with the year.</summary>
+    /// list the wording, which changes with the report and with the year.
+    ///
+    /// What makes it furniture is that it runs on <em>into</em> the table, ignoring the
+    /// column edge. Something that stops short of the edge is a column of its own with
+    /// no heading — one export prints a <c>*</c> beside every name — and taking that for
+    /// a footer threw away 416 people of 424. Its contents fall outside every column,
+    /// so keeping the line costs nothing.</summary>
     private static bool IsFurniture(TextLine line, HeadingRow heading)
     {
         var words = line.Words();
         if (words.Count == 0) return true;
-        if (words[0].X < heading.Layout.Left - 1.5) return true;
+
+        var edge = heading.Layout.Left - 1.5;
+        if (words[0].X < edge)
+        {
+            var gap = Math.Max(1.0, line.TextSize) * PhraseSpace;
+            if (line.Runs(gap).Any(r => r.X < edge && r.End >= edge)) return true;
+        }
 
         var text = line.Text;
         return PageNumber().IsMatch(text) || RowCount().IsMatch(text) || BareLink().IsMatch(text);
     }
+
+    /// <summary>Words closer than this fraction of the text size are one phrase, so a
+    /// footer's "14 Oct 2026" is judged as a whole and not word by word. A little under
+    /// two spaces, as in <see cref="Headings"/>.</summary>
+    private const double PhraseSpace = 0.45;
 
     [GeneratedRegex(@"^page\s+\d+(\s+of\s+\d+)?$", RegexOptions.IgnoreCase)]
     private static partial Regex PageNumber();

@@ -100,7 +100,10 @@ Details that each cost a debugging session:
   column is left-aligned on that column, so a line starting to the left of it is not in
   the table. That catches a footer's date, its copyright line and its page number
   without anybody having to list the words, which change with the report and the year.
-  Three patterns are checked as well, for a footer that starts inside the table: a page
+  What gives a footer away is that it runs on **into** the table across that edge. Text
+  left of the table that stops short of it is a column with no heading, not furniture:
+  one export prints a `*` beside every name, and treating that as a footer read 8 people
+  out of 424. Three patterns are checked as well, for a footer that starts inside the table: a page
   number, a count, and a bare URL.
 
 ### When it is not a table but a printed directory

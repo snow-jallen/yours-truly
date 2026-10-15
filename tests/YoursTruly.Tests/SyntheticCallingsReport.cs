@@ -21,7 +21,7 @@ internal static class SyntheticCallingsReport
     // point and a half to their right.
     private const double HName = 54.1, HGender = 152.4, HAge = 215.6, HBirthday = 240.6,
                          HPhone = 282.6, HEmail = 343.2, HUnit = 480.3;
-    private const double XName = 55.6, XGender = 153.9, XBirthday = 242.1,
+    private const double XStar = 36.6, XName = 55.6, XGender = 153.9, XBirthday = 242.1,
                          XPhone = 284.1, XEmail = 344.7, XUnit = 481.8;
 
     /// <summary>Consecutive rows, 1.68x the text size apart.</summary>
@@ -31,7 +31,9 @@ internal static class SyntheticCallingsReport
     /// side of the row's own baseline.</summary>
     private const double Wrap = 4.5;
 
-    public static byte[] Build()
+    /// <summary>A later export prints a <c>*</c> in a column of its own, with no heading,
+    /// to the left of every member's name. <paramref name="starred"/> puts it there.</summary>
+    public static byte[] Build(bool starred = false)
     {
         var builder = new PdfDocumentBuilder();
         var font = builder.AddStandard14Font(Standard14Font.Helvetica);
@@ -58,6 +60,7 @@ internal static class SyntheticCallingsReport
         void Person(PdfPageBuilder page, double y,
                     string name, string gender, string birthday, string phone, string email, string unit)
         {
+            if (starred) Put(page, "*", XStar, y);
             Put(page, name, XName, y);
             Put(page, gender, XGender, y);
             Put(page, birthday, XBirthday, y);

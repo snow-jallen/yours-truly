@@ -37,6 +37,23 @@ public sealed class CallingsReportParserTests
     }
 
     [Fact]
+    public void Reads_every_person_when_a_column_with_no_heading_marks_each_row()
+    {
+        // A later export of this report prints a * to the left of every name, outside
+        // any heading. It is a column of its own that stops short of the table, not
+        // a footer running into it, and taking it for one dropped every row but the
+        // few whose wrapped name had a line without the star.
+        var sheet = SheetHelp.Read(SyntheticCallingsReport.Build(starred: true), "print.pdf");
+        Assert.Equal(7, sheet.Rows.Count);
+        Assert.Equal("Ashdown, Marigold", sheet.Rows[0].Cell(sheet, "Name"));
+        Assert.Equal("(435) 555-0100", sheet.Rows[0].Cell(sheet, "Phone"));
+        Assert.Equal("Featherstonehaugh, Wilhelmina", sheet.Rows[3].Cell(sheet, "Name"));
+        Assert.DoesNotContain(sheet.Rows, r => r.Text.Contains('*', StringComparison.Ordinal));
+        Assert.DoesNotContain(sheet.Rows, r => r.Text.Contains("Count", StringComparison.Ordinal));
+        Assert.DoesNotContain(sheet.Rows, r => r.Text.Contains("Reserve", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Leaves_out_the_smaller_table_printed_above_the_people()
     {
         // "Pilkington, Hattie" is in a table with different columns and no contact
