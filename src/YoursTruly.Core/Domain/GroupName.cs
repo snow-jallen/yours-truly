@@ -19,4 +19,15 @@ public static class GroupName
 
     public static bool Same(string? a, string? b) =>
         string.Equals(Clean(a), Clean(b), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The groups somebody is in, as one line for under their name:
+    /// "Choir · Youth leaders". Alphabetical, so the same person reads the same way
+    /// every time; a group that has gone since the person was loaded is left out
+    /// rather than shown as an id. Empty when they are in none.</summary>
+    public static string Line(IEnumerable<Guid> memberOf, IReadOnlyDictionary<Guid, string> names) =>
+        string.Join(" · ", memberOf
+            .Select(id => names.TryGetValue(id, out var name) ? name : null)
+            .OfType<string>()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order(StringComparer.OrdinalIgnoreCase));
 }

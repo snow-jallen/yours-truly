@@ -57,6 +57,12 @@
                       <TextBlock Text="{Binding Note}" FontSize="11.5" FontStyle="Italic"
                                  IsVisible="{Binding HasNote}" TextTrimming="CharacterEllipsis"
                                  Foreground="{DynamicResource ChVoice}"/>
+                      <!-- Upright and quieter than the note, so the two never read as
+                           one: the note is what you wrote, this is where they belong. -->
+                      <TextBlock Text="{Binding GroupLine}" FontSize="11.5"
+                                 IsVisible="{Binding HasGroups}" TextTrimming="CharacterEllipsis"
+                                 ToolTip.Tip="{Binding GroupLine}"
+                                 Foreground="{DynamicResource Ink3}"/>
                     </StackPanel>
                     <TextBlock Grid.Column="1" Text="{Binding Email}" Classes="mono"
                                Foreground="{DynamicResource Ink2}" TextTrimming="CharacterEllipsis"

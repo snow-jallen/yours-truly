@@ -188,6 +188,9 @@ public sealed class ScreenshotHarness(ITestOutputHelper output) : IDisposable
             YoursTruly.Core.Domain.ChannelSet.Of(YoursTruly.Core.Domain.Channel.Text));
 
         await new GroupService(db).SaveMembersAsync("Activities committee", [ids[0], ids[3], ids[6]]);
+        // A second group overlapping the first, so the People list shows somebody in
+        // two groups at once as well as somebody in one.
+        await new GroupService(db).SaveMembersAsync("Choir", [ids[0], ids[2]]);
 
         // A couple of corrections, so the changes-since-import screen has rows in it.
         // Everybody here was added by hand, so every detail is one a file does not have.

@@ -988,8 +988,14 @@ public sealed class UserInterfaceTests : IDisposable
             people.Rows[0].EditCommand.Execute(null);
             var editor = Assert.IsType<PersonEditor>(people.Editing);
             Assert.False(editor.HasGroups);
+            Assert.False(people.Rows[0].HasGroups);
             editor.NewGroup = "Ward reps";
             await editor.SaveCommand.ExecuteAsync(null);
+
+            // The list says so straight away, under their name, without reopening it.
+            Assert.Equal("Ward reps", people.Rows[0].GroupLine);
+            Assert.True(people.Rows[0].HasGroups);
+            Assert.False(people.Rows[1].HasGroups);
 
             people.Group = Assert.Single(people.GroupOptions, o => o.Name == "Ward reps");
             Assert.Equal("Ashgrove, Adelaide", Assert.Single(people.Rows).Name);

@@ -14,9 +14,11 @@ public sealed partial class PersonRow : ObservableObject
     private readonly Func<Guid, ChannelSet, Task> _choose;
     private readonly Action<PersonRow> _edit;
 
-    public PersonRow(Recipient person, Func<Guid, ChannelSet, Task> choose, Action<PersonRow> edit)
+    public PersonRow(
+        Recipient person, Func<Guid, ChannelSet, Task> choose, Action<PersonRow> edit, string groups = "")
     {
         Person = person;
+        GroupLine = groups;
         _choose = choose;
         _edit = edit;
         _channels = person.PreferredChannels;
@@ -32,6 +34,12 @@ public sealed partial class PersonRow : ObservableObject
     public string Age => Person.Age?.ToString() ?? "—";
     public string Note => Person.Notes ?? "";
     public bool HasNote => Person.HasNote;
+
+    /// <summary>Every group this person is in, as one line under their name — the only
+    /// place on the list that says so without opening the editor.</summary>
+    public string GroupLine { get; }
+    public bool HasGroups => GroupLine.Length > 0;
+
     public string Birthday => Person.BirthMonth is int m && Person.BirthDay is int d
         ? $"{d} {Months[m - 1]}" : "—";
 
@@ -222,8 +230,10 @@ public sealed partial class PeopleViewModel(AppServices services, Func<Task>? im
         };
 
         var shown = Audience.Select(_all, filter, _sort);
+        var names = _groups.ToDictionary(g => g.Id, g => g.Name);
         Rows.Clear();
-        foreach (var person in shown) Rows.Add(new PersonRow(person, SaveChannelsAsync, StartEditing));
+        foreach (var person in shown)
+            Rows.Add(new PersonRow(person, SaveChannelsAsync, StartEditing, GroupName.Line(person.Groups, names)));
 
         var active = _all.Count(p => p.IsActive);
         Summary = shown.Count == active

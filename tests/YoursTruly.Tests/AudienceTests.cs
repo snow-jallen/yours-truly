@@ -79,6 +79,17 @@ public sealed class AudienceTests
         Assert.True(GroupName.Same("ward reps", "  Ward  Reps"));
 
     [Fact]
+    public void A_persons_groups_read_as_one_line_in_alphabetical_order()
+    {
+        Guid choir = Guid.NewGuid(), youth = Guid.NewGuid(), gone = Guid.NewGuid();
+        var names = new Dictionary<Guid, string> { [youth] = "Youth leaders", [choir] = "choir" };
+
+        Assert.Equal("choir · Youth leaders", GroupName.Line([youth, choir, gone], names));
+        Assert.Equal("", GroupName.Line([], names));
+        Assert.Equal("", GroupName.Line([gone], names));
+    }
+
+    [Fact]
     public void Searching_finds_a_tag_written_in_somebody_s_note()
     {
         var people = new[]
