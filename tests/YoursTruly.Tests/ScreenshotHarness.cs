@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using YoursTruly.App;
 using YoursTruly.App.ViewModels;
 using YoursTruly.Data;
@@ -75,6 +76,15 @@ public sealed class ScreenshotHarness(ITestOutputHelper output) : IDisposable
         await model.ShowSendAsync();
         ((SendViewModel)model.Current).Body = "Practice is this Friday, 6:30 at the field. Bring a ball if you can.";
         Shoot(window, "3-send");
+
+        // Two groups ticked and the picker open, so the flyout of ticks is in a picture.
+        var sending = (SendViewModel)model.Current;
+        foreach (var pick in sending.GroupPicks) pick.IsTicked = true;
+        var picker = window.GetVisualDescendants().OfType<DropDownButton>().Single(b => b.Name == "GroupPicker");
+        picker.Flyout!.ShowAt(picker);
+        Shoot(window, "3b-send-groups");
+        picker.Flyout.Hide();
+        sending.ClearFiltersCommand.Execute(null);
         await model.ShowChangesAsync(); Shoot(window, "4-changes");
         await model.ShowHistoryAsync(); Shoot(window, "5-history");
         model.ShowSetup(); Shoot(window, "6-setup");
@@ -126,7 +136,7 @@ public sealed class ScreenshotHarness(ITestOutputHelper output) : IDisposable
 
         var shots = Directory.GetFiles(_folder, "*.png");
         output.WriteLine($"FOLDER {_folder} — {shots.Length} images");
-        Assert.Equal(11, shots.Length);
+        Assert.Equal(12, shots.Length);
         Assert.All(shots, f => Assert.True(new FileInfo(f).Length > 5000, $"{f} is suspiciously small"));
             return 0;
         };

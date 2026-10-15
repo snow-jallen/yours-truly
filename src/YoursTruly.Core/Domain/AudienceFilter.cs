@@ -53,10 +53,16 @@ public sealed record AudienceFilter
     /// note and searching that word gathers them.</summary>
     public string? Search { get; init; }
 
-    /// <summary>Only the members of this group. A group is a list somebody made by hand
-    /// or filled from a column of an imported file, so it combines with the other
-    /// criteria like any of them.</summary>
-    public Guid? Group { get; init; }
+    /// <summary>Only the members of these groups — of any one of them, not all. A
+    /// group is a list somebody made by hand or filled from a column of an imported
+    /// file, and ticking "Choir" and "Youth leaders" means both lists of people, so it
+    /// is a union. Somebody in two of them is still one person and matches once.
+    /// Null or empty constrains nothing; the other criteria still combine with AND.</summary>
+    public IReadOnlySet<Guid>? Groups { get; init; }
+
+    /// <summary>Just the one group, for a screen that only ever picks one.</summary>
+    public static IReadOnlySet<Guid>? OnlyGroup(Guid? group) =>
+        group is Guid id ? new HashSet<Guid> { id } : null;
 
     public ChannelFilter Channel { get; init; } = ChannelFilter.Any;
 
@@ -77,7 +83,7 @@ public sealed record AudienceFilter
     {
         if (ActiveOnly && !person.IsActive) return false;
         if (!Channel.Matches(person.PreferredChannels)) return false;
-        if (Group is Guid group && !person.Groups.Contains(group)) return false;
+        if (Groups is { Count: > 0 } groups && !groups.Overlaps(person.Groups)) return false;
         if ((MinAge is not null || MaxAge is not null) && person.Age is null) return false;
         if (MinAge is int min && person.Age < min) return false;
         if (MaxAge is int max && person.Age > max) return false;

@@ -53,9 +53,70 @@ public sealed class AudienceTests
             Person("Munk", "Delbert", age: 30),
         };
 
-        Assert.Equal(["Ashby", "Quilley"], Names(Audience.Select(people, new AudienceFilter { Group = choir })));
+        Assert.Equal(["Ashby", "Quilley"], Names(Audience.Select(people, new AudienceFilter { Groups = new HashSet<Guid> { choir } })));
         Assert.Equal(["Ashby"], Names(Audience.Select(people,
-            new AudienceFilter { Group = choir, MaxAge = 50 })));
+            new AudienceFilter { Groups = new HashSet<Guid> { choir }, MaxAge = 50 })));
+    }
+
+    [Fact]
+    public void Ticking_several_groups_keeps_anyone_in_any_of_them()
+    {
+        Guid choir = Guid.NewGuid(), youth = Guid.NewGuid(), band = Guid.NewGuid();
+        var people = new[]
+        {
+            Person("Ashby", "Miriam") with { Groups = new HashSet<Guid> { choir } },
+            Person("Quilley", "Barnaby") with { Groups = new HashSet<Guid> { youth } },
+            Person("Munk", "Delbert") with { Groups = new HashSet<Guid> { band } },
+            Person("Nobody", "Ida"),
+        };
+
+        Assert.Equal(["Ashby", "Quilley"], Names(Audience.Select(people,
+            new AudienceFilter { Groups = new HashSet<Guid> { choir, youth } })));
+    }
+
+    [Fact]
+    public void Somebody_in_two_ticked_groups_is_one_person_and_gets_it_once()
+    {
+        Guid choir = Guid.NewGuid(), youth = Guid.NewGuid();
+        var both = Person("Ashby", "Miriam") with { Groups = new HashSet<Guid> { choir, youth } };
+        var people = new[] { both, Person("Quilley", "Barnaby") with { Groups = new HashSet<Guid> { youth } } };
+
+        var chosen = Audience.Select(people, new AudienceFilter { Groups = new HashSet<Guid> { choir, youth } });
+
+        Assert.Equal(["Ashby", "Quilley"], Names(chosen));
+        Assert.Equal(2, Audience.Summarise(chosen).Messages);
+    }
+
+    [Fact]
+    public void No_group_ticked_means_no_group_filter_at_all()
+    {
+        var people = new[]
+        {
+            Person("Ashby", "Miriam") with { Groups = new HashSet<Guid> { Guid.NewGuid() } },
+            Person("Nobody", "Ida"),
+        };
+
+        Assert.Equal(2, Audience.Select(people, new AudienceFilter { Groups = new HashSet<Guid>() }).Count);
+        Assert.Equal(2, Audience.Select(people, new AudienceFilter { Groups = null }).Count);
+    }
+
+    [Fact]
+    public void A_group_picker_says_what_is_ticked_in_as_few_words_as_will_do()
+    {
+        Assert.Equal("Any group", GroupName.Summary([]));
+        Assert.Equal("Choir", GroupName.Summary(["Choir"]));
+        Assert.Equal("Choir, Youth", GroupName.Summary(["Choir", "Youth"]));
+        Assert.Equal("2 groups", GroupName.Summary(["Activities committee", "Youth leaders"]));
+        Assert.Equal("3 groups", GroupName.Summary(["A", "B", "C"]));
+    }
+
+    [Fact]
+    public void The_record_of_a_send_names_every_group_it_went_to()
+    {
+        Assert.Equal("", GroupName.Describe([]));
+        Assert.Equal("Choir", GroupName.Describe(["Choir"]));
+        Assert.Equal("Choir or Youth leaders", GroupName.Describe(["Choir", "Youth leaders"]));
+        Assert.Equal("Band, Choir or Youth leaders", GroupName.Describe(["Band", "Choir", "Youth leaders"]));
     }
 
     [Fact]
@@ -63,7 +124,7 @@ public sealed class AudienceTests
     {
         var choir = Guid.NewGuid();
         var people = new[] { Person("Gone", "Alvin", active: false) with { Groups = new HashSet<Guid> { choir } } };
-        Assert.Empty(Audience.Select(people, new AudienceFilter { Group = choir }));
+        Assert.Empty(Audience.Select(people, new AudienceFilter { Groups = new HashSet<Guid> { choir } }));
     }
 
     [Theory]
@@ -182,7 +243,7 @@ public sealed class AudienceTests
             Person("GroupOnly", "B", age: 80) with { Groups = new HashSet<Guid> { team } },
             Person("AgeOnly", "C", age: 40),
         };
-        var kept = Audience.Select(people, new AudienceFilter { Group = team, MaxAge = 50 });
+        var kept = Audience.Select(people, new AudienceFilter { Groups = new HashSet<Guid> { team }, MaxAge = 50 });
         Assert.Equal(["Both"], Names(kept));
     }
 

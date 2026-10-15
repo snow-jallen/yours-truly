@@ -21,3 +21,17 @@ public sealed record GroupChoice(Guid? Id, string Label)
 
     public override string ToString() => Label;
 }
+
+/// <summary>One group in a picker that can tick several. Tells its owner when it is
+/// ticked or unticked, so the owner can re-filter without watching every item.</summary>
+public sealed partial class GroupPick(Guid id, string name, int members, Action changed)
+    : CommunityToolkit.Mvvm.ComponentModel.ObservableObject
+{
+    public Guid Id { get; } = id;
+    public string Name { get; } = name;
+    public string Label { get; } = $"{name} ({members})";
+
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isTicked;
+
+    partial void OnIsTickedChanged(bool value) => changed();
+}

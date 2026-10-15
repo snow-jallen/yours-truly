@@ -963,18 +963,66 @@ public sealed class UserInterfaceTests : IDisposable
 
             // Next time: choose the group instead of ticking people again.
             send.SelectAllCommand.Execute(null);
-            send.Group = Assert.Single(send.GroupOptions, o => o.Name == "Choir");
+            Assert.Single(send.GroupPicks, o => o.Name == "Choir").IsTicked = true;
+            Assert.Equal("Choir", send.GroupLabel);
             Assert.Equal(["Ashgrove, Adelaide", "Carrowmore, Ophelia"], send.Rows.Select(r => r.Name));
 
             // Saving under the same name again adds to it rather than making a second one.
-            send.Group = GroupChoice.Any;
+            send.AnyGroupCommand.Execute(null);
+            Assert.Equal("Any group", send.GroupLabel);
             send.SelectNoneCommand.Execute(null);
             send.Rows[1].IsSelected = true;
             send.StartSavingGroupCommand.Execute(null);
             send.NewGroupName = "choir";
             await send.SaveGroupCommand.ExecuteAsync(null);
             Assert.Contains("now has 3 people", send.GroupStatus, StringComparison.Ordinal);
-            Assert.Equal(2, send.GroupOptions.Count);
+            Assert.Single(send.GroupPicks);
+        }, _folder);
+
+    [Fact]
+    public Task Several_groups_can_be_ticked_and_the_list_is_everyone_in_any_of_them() =>
+        InWindow(async (_, model) =>
+        {
+            await SeedThreeAsync();
+            await using (var db = AppServices.Start(
+                Path.Combine(_folder, "contacts.db"), Path.Combine(_folder, "settings.json")).Db())
+            {
+                var everyone = await new DirectoryService(db).RecipientsAsync();
+                Guid Id(string last) => everyone.Single(p => p.LastName == last).Id;
+                var groups = new GroupService(db);
+                await groups.SaveMembersAsync("Choir", [Id("Ashgrove"), Id("Bellweather")]);
+                await groups.SaveMembersAsync("Youth", [Id("Bellweather")]);
+            }
+
+            await model.ShowSendAsync();
+            var send = (SendViewModel)model.Current;
+            Assert.Equal("Any group", send.GroupLabel);
+            var choir = Assert.Single(send.GroupPicks, g => g.Name == "Choir");
+            var youth = Assert.Single(send.GroupPicks, g => g.Name == "Youth");
+
+            youth.IsTicked = true;
+            Assert.Equal(["Bellweather, Horatio"], send.Rows.Select(r => r.Name));
+
+            // Horatio is in both and is still one row, one message.
+            choir.IsTicked = true;
+            Assert.Equal("Choir, Youth", send.GroupLabel);
+            Assert.Equal(["Ashgrove, Adelaide", "Bellweather, Horatio"], send.Rows.Select(r => r.Name));
+            Assert.Equal("2 selected", send.SelectedLine);
+
+            // With two ticked, neither name is the obvious one to save under.
+            send.StartSavingGroupCommand.Execute(null);
+            Assert.Equal("", send.NewGroupName);
+            send.CancelSavingGroupCommand.Execute(null);
+
+            youth.IsTicked = false;
+            send.StartSavingGroupCommand.Execute(null);
+            Assert.Equal("Choir", send.NewGroupName);
+            send.CancelSavingGroupCommand.Execute(null);
+
+            send.ClearFiltersCommand.Execute(null);
+            Assert.All(send.GroupPicks, g => Assert.False(g.IsTicked));
+            Assert.Equal("Any group", send.GroupLabel);
+            Assert.Equal(3, send.Rows.Count);
         }, _folder);
 
     [Fact]
@@ -1085,7 +1133,8 @@ public sealed class UserInterfaceTests : IDisposable
 
             Assert.Same(send, model.Current);
             Assert.True(window.FindControl<RadioButton>("NavSend")!.IsChecked);
-            Assert.Equal("Choir", send.Group?.Name);
+            Assert.Equal("Choir", Assert.Single(send.GroupPicks, g => g.IsTicked).Name);
+            Assert.Equal("Choir", send.GroupLabel);
             Assert.Equal("", send.Search);
             Assert.Equal(["Bellweather, Horatio", "Carrowmore, Ophelia"], send.Rows.Select(r => r.Name));
             Assert.All(send.Rows, r => Assert.True(r.IsSelected));

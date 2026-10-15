@@ -225,7 +225,7 @@ public sealed partial class PeopleViewModel(AppServices services, Func<Task>? im
         var filter = new AudienceFilter
         {
             Search = string.IsNullOrWhiteSpace(Search) ? null : Search,
-            Group = Group?.Id,
+            Groups = AudienceFilter.OnlyGroup(Group?.Id),
             ActiveOnly = true,
         };
 

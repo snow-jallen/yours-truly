@@ -122,8 +122,22 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
     [ObservableProperty] private string _birthdayMonth = AnyMonth;
     [ObservableProperty] private string _minAge = "";
     [ObservableProperty] private string _maxAge = "";
-    [ObservableProperty] private IReadOnlyList<GroupChoice> _groupOptions = [GroupChoice.Any];
-    [ObservableProperty] private GroupChoice? _group = GroupChoice.Any;
+    /// <summary>Every group, each tickable. Several may be ticked, and then the list
+    /// is everyone in any of them.</summary>
+    [ObservableProperty] private IReadOnlyList<GroupPick> _groupPicks = [];
+
+    /// <summary>What the group picker says while closed: "Any group", a name, or how many.</summary>
+    [ObservableProperty] private string _groupLabel = GroupName.AnyGroup;
+
+    public bool HasGroupPicks => GroupPicks.Count > 0;
+
+    partial void OnGroupPicksChanged(IReadOnlyList<GroupPick> value) => OnPropertyChanged(nameof(HasGroupPicks));
+
+    /// <summary>Set while several ticks change at once, so the list is rebuilt once
+    /// rather than once per group.</summary>
+    private bool _pickingGroups;
+
+    private IReadOnlyList<GroupPick> TickedGroups => [.. GroupPicks.Where(g => g.IsTicked)];
 
     // --- saving the ticked people as a group ---------------------------------------
     [ObservableProperty] private bool _savingGroup;
@@ -387,14 +401,39 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
     partial void OnBirthdayMonthChanged(string value) => Refresh();
     partial void OnMinAgeChanged(string value) => Refresh();
     partial void OnMaxAgeChanged(string value) => Refresh();
-    partial void OnGroupChanged(GroupChoice? value) => Refresh();
+    private void OnGroupTicked()
+    {
+        if (_pickingGroups) return;
+        GroupLabel = GroupName.Summary([.. TickedGroups.Select(g => g.Name)]);
+        Refresh();
+    }
+
+    /// <summary>Ticks exactly these groups and nothing else, re-filtering once.</summary>
+    private void TickGroups(IReadOnlySet<Guid> ids)
+    {
+        _pickingGroups = true;
+        try { foreach (var pick in GroupPicks) pick.IsTicked = ids.Contains(pick.Id); }
+        finally { _pickingGroups = false; }
+        OnGroupTicked();
+    }
+
+    /// <summary>"Any group" inside the picker: unticks them all.</summary>
+    [RelayCommand]
+    private void AnyGroup() => TickGroups(new HashSet<Guid>());
 
     private async Task LoadGroupsAsync(AppDbContext db)
     {
-        var options = GroupChoice.Options(await new GroupService(db).ListAsync());
-        var keep = GroupChoice.Find(options, Group);
-        GroupOptions = options;
-        Group = keep;
+        // A group still there stays ticked; one deleted since simply drops out.
+        var keep = TickedGroups.Select(g => g.Id).ToHashSet();
+        var groups = await new GroupService(db).ListAsync();
+        _pickingGroups = true;
+        try
+        {
+            GroupPicks = [.. groups.Select(g =>
+                new GroupPick(g.Id, g.Name, g.Members, OnGroupTicked) { IsTicked = keep.Contains(g.Id) })];
+        }
+        finally { _pickingGroups = false; }
+        GroupLabel = GroupName.Summary([.. TickedGroups.Select(g => g.Name)]);
     }
 
     /// <summary>Shows exactly this group with everyone in it ticked — what "Send a
@@ -406,8 +445,7 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
         _deselected.Clear();
         SavingGroup = false;
         GroupStatus = "";
-        Group = GroupChoice.Find(GroupOptions, new GroupChoice(groupId, ""));
-        Refresh();
+        TickGroups(new HashSet<Guid> { groupId });
     }
 
     /// <summary>Opens the box for naming a group. Typing a name that exists adds the
@@ -415,7 +453,9 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
     [RelayCommand]
     private void StartSavingGroup()
     {
-        NewGroupName = Group?.Id is null ? "" : Group.Name;
+        // Only one group ticked is a guess worth making: with two, neither name is
+        // obviously the one meant, and with none there is nothing to guess from.
+        NewGroupName = TickedGroups is [var only] ? only.Name : "";
         GroupStatus = "";
         SavingGroup = true;
     }
@@ -478,7 +518,7 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
         BirthdayMonth = AnyMonth;
         MinAge = "";
         MaxAge = "";
-        Group = GroupChoice.Any;
+        TickGroups(new HashSet<Guid>());
     }
 
     [RelayCommand]
@@ -511,7 +551,7 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
         return new AudienceFilter
         {
             Search = string.IsNullOrWhiteSpace(Search) ? null : Search,
-            Group = Group?.Id,
+            Groups = TickedGroups.Select(g => g.Id).ToHashSet(),
             Channel = channel,
             BirthdayMonth = month > 0 ? month : null,
             MinAge = int.TryParse(MinAge, out var min) ? min : null,
@@ -687,7 +727,7 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
     private string Describe(int count)
     {
         var parts = new List<string>();
-        if (Group?.Id is not null) parts.Add(Group.Name);
+        if (GroupName.Describe([.. TickedGroups.Select(g => g.Name)]) is { Length: > 0 } groups) parts.Add(groups);
         if (Channel != AnyChannel) parts.Add(Channel);
         if (BirthdayMonth != AnyMonth) parts.Add($"birthdays in {BirthdayMonth}");
         if (MinAge.Length > 0 || MaxAge.Length > 0) parts.Add($"ages {(MinAge.Length > 0 ? MinAge : "any")}–{(MaxAge.Length > 0 ? MaxAge : "any")}");

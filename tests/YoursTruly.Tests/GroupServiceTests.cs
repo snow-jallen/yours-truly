@@ -52,7 +52,7 @@ public sealed class GroupServiceTests : IDisposable
         Assert.Equal(new GroupSummary(saved.Group.Id, "Choir", 2), saved.Group);
 
         var recipients = await new DirectoryService(db).RecipientsAsync();
-        var chosen = Audience.Select(recipients, new AudienceFilter { Group = saved.Group.Id });
+        var chosen = Audience.Select(recipients, new AudienceFilter { Groups = new HashSet<Guid> { saved.Group.Id } });
         Assert.Equal(["Ashby", "Munk"], chosen.Select(p => p.LastName));
     }
 

@@ -26,8 +26,40 @@
           <TextBox Text="{Binding Search}"
                    PlaceholderText="Search a name, email, phone or note"/>
           <WrapPanel Orientation="Horizontal" ItemSpacing="8" LineSpacing="8">
-            <ComboBox MinWidth="150" ItemsSource="{Binding GroupOptions}"
-                      SelectedItem="{Binding Group}"/>
+            <!-- Several groups can be ticked at once, so this is a list of ticks in a
+                 flyout rather than a ComboBox, which can only ever hold one. -->
+            <DropDownButton Name="GroupPicker" Classes="picker" MinWidth="150" MaxWidth="240"
+                            VerticalAlignment="Top"
+                            HorizontalContentAlignment="Left">
+              <TextBlock Text="{Binding GroupLabel}" TextTrimming="CharacterEllipsis"/>
+              <DropDownButton.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft">
+                  <StackPanel Spacing="6" MinWidth="220" MaxWidth="320">
+                    <Button Classes="quiet" Content="Any group — untick them all" HorizontalAlignment="Left" Padding="4,4"
+                            Command="{Binding AnyGroupCommand}"/>
+                    <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  IsVisible="{Binding HasGroupPicks}">
+                      <ItemsControl ItemsSource="{Binding GroupPicks}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:GroupPick">
+                            <CheckBox IsChecked="{Binding IsTicked}" FontSize="13">
+                              <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis"/>
+                            </CheckBox>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </ScrollViewer>
+                    <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource Ink3}"
+                               IsVisible="{Binding HasGroupPicks}"
+                               Text="Tick several to send to everyone in any of them. Somebody in two still gets it once."/>
+                    <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource Ink3}"
+                               IsVisible="{Binding !HasGroupPicks}"
+                               Text="No groups yet. Tick some people below and save them as one, or make one on the Groups screen."/>
+                  </StackPanel>
+                </Flyout>
+              </DropDownButton.Flyout>
+            </DropDownButton>
             <ComboBox MinWidth="140" ItemsSource="{Binding ChannelOptions}"
                       SelectedItem="{Binding Channel}"/>
             <ComboBox MinWidth="120" ItemsSource="{Binding MonthOptions}"

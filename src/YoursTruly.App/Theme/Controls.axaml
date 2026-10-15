@@ -206,6 +206,24 @@
     <Setter Property="MinHeight" Value="34"/>
   </Style>
 
+  <!-- A drop-down that holds ticks rather than one choice. Dressed as the ComboBoxes
+       beside it, so a row of filters reads as one row. -->
+  <Style Selector="FlyoutPresenter">
+    <Setter Property="Background" Value="{DynamicResource Surface}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+    <Setter Property="CornerRadius" Value="9"/>
+  </Style>
+  <Style Selector="DropDownButton.picker">
+    <Setter Property="Background" Value="{DynamicResource Surface}"/>
+    <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="7"/>
+    <Setter Property="MinHeight" Value="34"/>
+    <Setter Property="Padding" Value="12,5,10,5"/>
+    <Setter Property="FontWeight" Value="Normal"/>
+  </Style>
+
   <Style Selector="TextBox">
     <Setter Property="Background" Value="{DynamicResource Surface}"/>
     <Setter Property="Foreground" Value="{DynamicResource Ink}"/>
