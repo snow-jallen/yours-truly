@@ -71,6 +71,15 @@ public sealed record SentDelivery(
     public bool Wrong => Status is DeliveryStatus.Failed;
 }
 
+/// <summary>A message already sent, as the starting point for sending it to more
+/// people: what it said, and who already has it.</summary>
+public sealed record EarlierSend(
+    Guid Id,
+    DateTimeOffset At,
+    string? Subject,
+    string Body,
+    IReadOnlySet<Guid> AlreadyReceived);
+
 /// <summary>What was sent, when, and to whom. Written as each message goes out; this
 /// only reads it back.</summary>
 public sealed class MessageLogService(AppDbContext db)
@@ -112,6 +121,29 @@ public sealed class MessageLogService(AppDbContext db)
                 d.Channel, d.Address, d.Status, d.SentAt, d.Error))
             .AsNoTracking()
             .ToListAsync(cancellation);
+
+    /// <summary>One earlier send, with everyone who already received it.
+    ///
+    /// "Received" means at least one copy went out: a delivery marked
+    /// <see cref="DeliveryStatus.Sent"/> on any channel. Somebody whose e-mail failed
+    /// but whose text went has the message, so sending again would tell them twice.
+    /// Somebody whose every copy failed, was skipped, or never got past pending does
+    /// not have it, and is exactly who a second send is for.</summary>
+    public async Task<EarlierSend?> EarlierSendAsync(Guid batchId, CancellationToken cancellation = default)
+    {
+        var batch = await db.MessageBatches.AsNoTracking()
+            .FirstOrDefaultAsync(b => b.Id == batchId, cancellation);
+        if (batch is null) return null;
+
+        var received = await db.MessageDeliveries
+            .Where(d => d.MessageBatchId == batchId && d.Status == DeliveryStatus.Sent)
+            .Select(d => d.PersonId)
+            .Distinct()
+            .ToListAsync(cancellation);
+
+        return new EarlierSend(
+            batch.Id, batch.SentAt ?? batch.CreatedAt, batch.Subject, batch.Body, received.ToHashSet());
+    }
 
     /// <summary>The whole log as text, for pasting into a report or an email.</summary>
     public async Task<string> AsTextAsync(Guid batchId, CancellationToken cancellation = default)

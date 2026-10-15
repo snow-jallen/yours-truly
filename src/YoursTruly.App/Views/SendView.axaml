@@ -98,6 +98,23 @@
           </Border>
           <TextBlock Text="{Binding GroupStatus}" FontSize="12" TextWrapping="Wrap"
                      Foreground="{DynamicResource Ink2}" IsVisible="{Binding GroupStatus.Length}"/>
+
+          <!-- Opened from Sent Messages: says why some people are unticked, so a list
+               with gaps in it does not look like a fault. Visibility on the Border. -->
+          <Border Background="{DynamicResource AccentSoft}" CornerRadius="9" Padding="13,9"
+                  IsVisible="{Binding IsFollowUp}">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+              <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                <TextBlock Text="{Binding FollowUpLine}" FontSize="12.5" FontWeight="SemiBold"
+                           TextWrapping="Wrap" Foreground="{DynamicResource AccentInk}"/>
+                <TextBlock FontSize="11.5" TextWrapping="Wrap" Foreground="{DynamicResource AccentInk}"
+                           Text="They are still in the list below, just unticked. Tick anyone who should hear it again."/>
+              </StackPanel>
+              <Button Grid.Column="1" Content="Tick them again" Padding="10,3" FontSize="12.5"
+                      VerticalAlignment="Center" Command="{Binding TickLeftOutCommand}"
+                      IsVisible="{Binding CanTickLeftOut}"/>
+            </Grid>
+          </Border>
         </StackPanel>
 
         <!-- Selection bar + list -->

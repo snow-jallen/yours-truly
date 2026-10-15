@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using YoursTruly.Core.Diagnostics;
 using YoursTruly.Data;
 
 namespace YoursTruly.App.ViewModels;
@@ -19,7 +20,8 @@ public sealed partial class SentBatchRow(SentBatch batch, Action<SentBatchRow> o
     [RelayCommand] private void Open() => open(this);
 }
 
-public sealed partial class HistoryViewModel(AppServices services, IClipboardWriter clipboard) : ObservableObject
+public sealed partial class HistoryViewModel(
+    AppServices services, IClipboardWriter clipboard, Func<Guid, Task>? sendToMore = null) : ObservableObject
 {
     private List<SentDelivery> _allDeliveries = [];
 
@@ -88,6 +90,19 @@ public sealed partial class HistoryViewModel(AppServices services, IClipboardWri
 
             Deliveries.Add(delivery);
         }
+    }
+
+    public bool CanSendToMore => sendToMore is not null;
+
+    /// <summary>The same message again, to whoever this send did not reach or did not
+    /// include. Opens Send with the words filled in and the people who already have it
+    /// unticked; nothing goes until the user presses Send there.</summary>
+    [RelayCommand]
+    private async Task SendToMoreAsync()
+    {
+        if (Selected is null || sendToMore is null) return;
+        Log.Record("history.followup", Log.Details(("batch", Selected.Batch.Id)));
+        await sendToMore(Selected.Batch.Id);
     }
 
     /// <summary>The whole record of one send, for pasting into a report or an e-mail to

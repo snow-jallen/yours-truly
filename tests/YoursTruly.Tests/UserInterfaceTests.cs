@@ -1439,6 +1439,56 @@ public sealed class UserInterfaceTests : IDisposable
             Assert.Contains("Nothing has been sent yet", history.Summary, StringComparison.Ordinal);
         }, _folder);
 
+    [Fact]
+    public Task A_past_send_can_go_to_more_people_without_repeating_it_to_those_who_have_it() =>
+        InWindow(async (window, model) =>
+        {
+            await SeedThreeAsync();
+            await using (var db = AppServices.Start(
+                Path.Combine(_folder, "contacts.db"), Path.Combine(_folder, "settings.json")).Db())
+            {
+                var everyone = await new DirectoryService(db).RecipientsAsync();
+                Guid Id(string last) => everyone.Single(p => p.LastName == last).Id;
+                db.MessageBatches.Add(new YoursTruly.Data.Entities.MessageBatch
+                {
+                    Subject = "Practice moved",
+                    Body = "Practice is Friday at 6:30.",
+                    AudienceDescription = "Everyone active (2)",
+                    SentAt = new DateTimeOffset(2026, 10, 3, 18, 0, 0, TimeSpan.Zero),
+                    Deliveries =
+                    [
+                        new() { PersonId = Id("Ashgrove"), Channel = Channel.Email, Address = "adelaide@example.com",
+                                Status = YoursTruly.Data.Entities.DeliveryStatus.Sent },
+                        new() { PersonId = Id("Bellweather"), Channel = Channel.Email, Address = "horatio@example.com",
+                                Status = YoursTruly.Data.Entities.DeliveryStatus.Failed, Error = "Refused." },
+                    ],
+                });
+                await db.SaveChangesAsync();
+            }
+
+            await model.ShowHistoryAsync();
+            var history = (HistoryViewModel)model.Current;
+            Assert.True(history.CanSendToMore);
+            await history.SendToMoreCommand.ExecuteAsync(null);
+
+            var send = Assert.IsType<SendViewModel>(model.Current);
+            Assert.True(window.FindControl<RadioButton>("NavSend")!.IsChecked);
+            Assert.Equal("Practice moved", send.Subject);
+            Assert.Equal("Practice is Friday at 6:30.", send.Body);
+
+            // Everyone is still there; only the one whose copy went out is unticked.
+            // Horatio's failed, so he is exactly who this second send is for.
+            Assert.Equal(3, send.Rows.Count);
+            Assert.Equal(["Bellweather, Horatio", "Carrowmore, Ophelia"],
+                send.Rows.Where(r => r.IsSelected).Select(r => r.Name));
+            Assert.True(send.IsFollowUp);
+            Assert.StartsWith("Left out 1 person who already got this", send.FollowUpLine, StringComparison.Ordinal);
+
+            send.TickLeftOutCommand.Execute(null);
+            Assert.All(send.Rows, r => Assert.True(r.IsSelected));
+            Assert.False(send.IsFollowUp);
+        }, _folder);
+
     public void Dispose()
     {
         try { if (Directory.Exists(_folder)) Directory.Delete(_folder, recursive: true); }

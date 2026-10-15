@@ -139,6 +139,24 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
 
     private IReadOnlyList<GroupPick> TickedGroups => [.. GroupPicks.Where(g => g.IsTicked)];
 
+    // --- sending an earlier message to more people ----------------------------------
+
+    /// <summary>Who an earlier send already reached, when this screen was opened from
+    /// it. They are unticked, not hidden, and this line says why.</summary>
+    [ObservableProperty] private string _followUpLine = "";
+
+    private IReadOnlySet<Guid> _leftOut = new HashSet<Guid>();
+    private int _leftOutShown;
+
+    public bool IsFollowUp => FollowUpLine.Length > 0;
+    public bool CanTickLeftOut => _leftOutShown > 0;
+
+    partial void OnFollowUpLineChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsFollowUp));
+        OnPropertyChanged(nameof(CanTickLeftOut));
+    }
+
     // --- saving the ticked people as a group ---------------------------------------
     [ObservableProperty] private bool _savingGroup;
     [ObservableProperty] private string _newGroupName = "";
@@ -441,11 +459,58 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
     /// search left over from last time would quietly drop some of the group.</summary>
     public void FocusGroup(Guid groupId)
     {
+        ForgetFollowUp();
         ClearFilters();
         _deselected.Clear();
         SavingGroup = false;
         GroupStatus = "";
         TickGroups(new HashSet<Guid> { groupId });
+    }
+
+    /// <summary>Starts a new send from an earlier one: its words back in the boxes,
+    /// everyone shown, and everyone who already received it unticked. The filters are
+    /// cleared for the same reason as <see cref="FocusGroup"/>: a search left over from
+    /// last time would quietly hide some of the people this is for.</summary>
+    public async Task FollowUpAsync(Guid batchId)
+    {
+        EarlierSend? earlier;
+        await using (var db = services.Db())
+            earlier = await new MessageLogService(db).EarlierSendAsync(batchId);
+        if (earlier is null) return;
+
+        ClearFilters();
+        SavingGroup = false;
+        GroupStatus = "";
+        Status = "";
+        _deselected.Clear();
+        foreach (var id in earlier.AlreadyReceived) _deselected.Add(id);
+
+        Subject = earlier.Subject ?? "";
+        Body = FollowUp.Unsign(earlier.Body, store.Load().Signature);
+
+        _leftOut = earlier.AlreadyReceived;
+        var leftOut = _leftOutShown = _all.Count(p => p.IsActive && earlier.AlreadyReceived.Contains(p.Id));
+        FollowUpLine = FollowUp.Describe(leftOut, earlier.At.LocalDateTime, DateTime.Now);
+        Refresh();
+
+        Log.Record("send.followup", Log.Details(("batch", batchId), ("leftOut", leftOut)));
+    }
+
+    /// <summary>Puts back everybody the follow-up left out, for when the second send
+    /// is meant for them too after all.</summary>
+    [RelayCommand]
+    private void TickLeftOut()
+    {
+        foreach (var id in _leftOut) _deselected.Remove(id);
+        ForgetFollowUp();
+        Refresh();
+    }
+
+    private void ForgetFollowUp()
+    {
+        _leftOut = new HashSet<Guid>();
+        _leftOutShown = 0;
+        FollowUpLine = "";
     }
 
     /// <summary>Opens the box for naming a group. Typing a name that exists adds the
@@ -524,6 +589,8 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
     [RelayCommand]
     private void SelectAll()
     {
+        // Ticking everyone undoes what the follow-up note describes, so it goes too.
+        ForgetFollowUp();
         foreach (var row in Rows) { _deselected.Remove(row.Id); row.IsSelected = true; }
         Summarise();
     }
@@ -531,6 +598,7 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
     [RelayCommand]
     private void SelectNone()
     {
+        ForgetFollowUp();
         foreach (var row in Rows) { _deselected.Add(row.Id); row.IsSelected = false; }
         Summarise();
     }
@@ -711,6 +779,7 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
                    + (skipped > 0 ? $" {skipped} skipped." : "");
 
             await CountRecentEmailAsync(db);
+            ForgetFollowUp();
         }
         catch (Exception e)
         {

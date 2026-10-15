@@ -87,6 +87,13 @@ public sealed class ScreenshotHarness(ITestOutputHelper output) : IDisposable
         sending.ClearFiltersCommand.Execute(null);
         await model.ShowChangesAsync(); Shoot(window, "4-changes");
         await model.ShowHistoryAsync(); Shoot(window, "5-history");
+
+        // Sending that message on to more people: Send opens with it filled in and
+        // whoever already has it unticked, with a line saying why.
+        var history = (HistoryViewModel)model.Current;
+        await history.SendToMoreCommand.ExecuteAsync(null);
+        Shoot(window, "5b-send-to-more");
+        ((SendViewModel)model.Current).TickLeftOutCommand.Execute(null);
         model.ShowSetup(); Shoot(window, "6-setup");
 
         await model.ShowPeopleAsync();
@@ -136,7 +143,7 @@ public sealed class ScreenshotHarness(ITestOutputHelper output) : IDisposable
 
         var shots = Directory.GetFiles(_folder, "*.png");
         output.WriteLine($"FOLDER {_folder} — {shots.Length} images");
-        Assert.Equal(12, shots.Length);
+        Assert.Equal(13, shots.Length);
         Assert.All(shots, f => Assert.True(new FileInfo(f).Length > 5000, $"{f} is suspiciously small"));
             return 0;
         };
@@ -202,11 +209,47 @@ public sealed class ScreenshotHarness(ITestOutputHelper output) : IDisposable
         // two groups at once as well as somebody in one.
         await new GroupService(db).SaveMembersAsync("Choir", [ids[0], ids[2]]);
 
+        // One message already sent, so Sent Messages has something in it and "Send
+        // this to more people" has something to start from. Written straight into the
+        // record rather than sent, since nothing here can send. Two copies went out,
+        // one failed, and the rest of the list was not included at all.
+        var signed = YoursTruly.Core.Domain.Signature.Compose(
+            "Practice is moved to Thursday at 6:30 because of the tournament. Bring water.",
+            "Jonathan Allen, Thunder FC");
+        var at = new DateTimeOffset(2026, 10, 3, 18, 42, 0, TimeSpan.Zero);
+        db.MessageBatches.Add(new YoursTruly.Data.Entities.MessageBatch
+        {
+            Subject = "Practice moved to Thursday",
+            Body = signed,
+            AudienceDescription = "Activities committee (3)",
+            CreatedAt = at,
+            SentAt = at,
+            Deliveries =
+            [
+                Delivery(ids[0], YoursTruly.Core.Domain.Channel.Email, "a.ashgrove@example.com", at),
+                Delivery(ids[0], YoursTruly.Core.Domain.Channel.Text, "+14355550111", at),
+                Delivery(ids[3], YoursTruly.Core.Domain.Channel.Text, "+14355550140", at),
+                Delivery(ids[6], YoursTruly.Core.Domain.Channel.Email, "p.glenhaven@example.com", at,
+                    "Gmail refused this address. Check it is typed correctly."),
+            ],
+        });
+        await db.SaveChangesAsync();
+
         // A couple of corrections, so the changes-since-import screen has rows in it.
         // Everybody here was added by hand, so every detail is one a file does not have.
         await directory.UpdateDetailsAsync(
             ids[1], "h.bellweather@example.com", null, null, AppServices.Today);
     }
+
+    private static YoursTruly.Data.Entities.MessageDelivery Delivery(
+        Guid person, YoursTruly.Core.Domain.Channel channel, string address, DateTimeOffset at, string? error = null) =>
+        new()
+        {
+            PersonId = person, Channel = channel, Address = address, SentAt = at, Error = error,
+            Status = error is null
+                ? YoursTruly.Data.Entities.DeliveryStatus.Sent
+                : YoursTruly.Data.Entities.DeliveryStatus.Failed,
+        };
 
     public void Dispose() { }
 }

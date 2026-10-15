@@ -64,10 +64,13 @@
             </Border>
           </StackPanel>
 
-          <Grid Grid.Row="1" ColumnDefinitions="*,Auto" ColumnSpacing="9" Margin="15,0,15,12">
+          <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="9" Margin="15,0,15,12">
             <TextBox Grid.Column="0" Text="{Binding Search}"
                      PlaceholderText="Find a person in this send"/>
             <Button Grid.Column="1" Content="Copy this record" Command="{Binding CopyCommand}"/>
+            <Button Grid.Column="2" Content="Send this to more people…" Command="{Binding SendToMoreCommand}"
+                    IsVisible="{Binding CanSendToMore}"
+                    ToolTip.Tip="Opens Send a message with this message filled in. Everyone who already got it is left unticked."/>
           </Grid>
 
           <Border Grid.Row="2" Classes="header">

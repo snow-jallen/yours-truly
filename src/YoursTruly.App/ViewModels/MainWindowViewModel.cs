@@ -168,7 +168,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         _groups = new GroupsViewModel(_services, SendToGroupAsync);
         _send = new SendViewModel(_services, _store);
         _changes = new ChangesViewModel(_services, _clipboard);
-        _history = new HistoryViewModel(_services, _clipboard);
+        _history = new HistoryViewModel(_services, _clipboard, SendToMoreAsync);
         _noList = new NoListViewModel(
             import: ShowImportAsync,
             openExisting: OpenFromFileAsync,
@@ -364,6 +364,22 @@ public sealed partial class MainWindowViewModel : ObservableObject
         {
             await ShowSendAsync();
             _send.FocusGroup(groupId);
+        }
+        catch (Exception failure)
+        {
+            Log.Failure("screen.open", failure);
+            Current = new ScreenFailedViewModel(failure.Message);
+        }
+    }
+
+    /// <summary>From Sent Messages: Send, with that message filled in and everyone who
+    /// already has it unticked.</summary>
+    public async Task SendToMoreAsync(Guid batchId)
+    {
+        try
+        {
+            await ShowSendAsync();
+            await _send.FollowUpAsync(batchId);
         }
         catch (Exception failure)
         {

@@ -80,6 +80,50 @@ public sealed class MessageLogTests : IDisposable
     }
 
     [Fact]
+    public async Task Somebody_already_has_a_message_once_any_one_copy_of_it_went_out()
+    {
+        using var db = Open();
+        var received = await PersonAsync(db, "Ashgrove", Channel.Email);
+        var oneOfTwo = (await PersonAsync(db, "Bellweather", Channel.Email)) with
+        {
+            PreferredChannels = ChannelSet.Of(Channel.Email, Channel.Text),
+        };
+        var failed = await PersonAsync(db, "Carrowmore", Channel.Text, phone: "+14355550199");
+        var skipped = await PersonAsync(db, "Denholm", Channel.None, email: null, phone: null);
+
+        // E-mail works and texts fail, so Bellweather's e-mail lands and her text does
+        // not, and Carrowmore, text only, gets nothing at all.
+        var service = new BroadcastService(db, new Dictionary<Channel, IMessageSender>
+        {
+            [Channel.Email] = new FakeSender(Channel.Email),
+            [Channel.Text] = new FakeSender(Channel.Text, SendOutcome.Failed("The number is not in service.")),
+        }, wait: (_, _) => Task.CompletedTask);
+        var batch = await service.SendAsync("Dinner", "Friday.", "Everyone (4)", [received, oneOfTwo, failed, skipped]);
+
+        var earlier = await new MessageLogService(db).EarlierSendAsync(batch.Id);
+
+        Assert.NotNull(earlier);
+        Assert.Equal("Dinner", earlier.Subject);
+        Assert.Equal("Friday.", earlier.Body);
+        Assert.Equal(new HashSet<Guid> { received.Id, oneOfTwo.Id }, earlier.AlreadyReceived);
+    }
+
+    [Fact]
+    public async Task Another_send_does_not_count_towards_who_already_has_this_one()
+    {
+        using var db = Open();
+        var first = await PersonAsync(db, "Ashgrove", Channel.Email);
+        var second = await PersonAsync(db, "Bellweather", Channel.Email);
+
+        var dinner = await Broadcast(db).SendAsync("Dinner", "Friday.", "Everyone (1)", [first]);
+        await Broadcast(db).SendAsync("Picnic", "Saturday.", "Everyone (1)", [second]);
+
+        var earlier = await new MessageLogService(db).EarlierSendAsync(dinner.Id);
+        Assert.Equal([first.Id], earlier!.AlreadyReceived);
+        Assert.Null(await new MessageLogService(db).EarlierSendAsync(Guid.NewGuid()));
+    }
+
+    [Fact]
     public async Task A_message_with_no_subject_is_listed_by_its_first_line()
     {
         using var db = Open();
