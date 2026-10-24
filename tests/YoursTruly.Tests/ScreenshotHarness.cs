@@ -96,6 +96,12 @@ public sealed class ScreenshotHarness(ITestOutputHelper output) : IDisposable
         ((SendViewModel)model.Current).TickLeftOutCommand.Execute(null);
         model.ShowSetup(); Shoot(window, "6-setup");
 
+        // The dark palette, on the two screens with the most of it showing.
+        Avalonia.Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark;
+        Shoot(window, "6b-setup-dark");
+        await model.ShowPeopleAsync(); Shoot(window, "2b-people-dark");
+        Avalonia.Application.Current.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Default;
+
         await model.ShowPeopleAsync();
         var people = (PeopleViewModel)model.Current;
         people.Group = people.GroupOptions.Single(o => o.Name == "Activities committee");
@@ -143,7 +149,7 @@ public sealed class ScreenshotHarness(ITestOutputHelper output) : IDisposable
 
         var shots = Directory.GetFiles(_folder, "*.png");
         output.WriteLine($"FOLDER {_folder} — {shots.Length} images");
-        Assert.Equal(13, shots.Length);
+        Assert.Equal(15, shots.Length);
         Assert.All(shots, f => Assert.True(new FileInfo(f).Length > 5000, $"{f} is suspiciously small"));
             return 0;
         };
