@@ -364,6 +364,29 @@
     </Border>
 
 
+    <!-- How it looks -->
+    <Border Classes="card" Margin="0,14,0,0" Padding="0">
+      <StackPanel>
+        <Border Background="{DynamicResource Surface2}" Padding="15,13"
+                BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+          <StackPanel Spacing="1">
+            <TextBlock Text="How it looks" FontWeight="SemiBold" FontSize="14"
+                       Foreground="{DynamicResource Ink}"/>
+            <TextBlock Text="Changes straight away, and is kept without pressing Save"
+                       FontSize="12" Foreground="{DynamicResource Ink3}"/>
+          </StackPanel>
+        </Border>
+        <StackPanel Margin="15" Spacing="7">
+          <RadioButton GroupName="appearance" IsChecked="{Binding LooksLikeComputer}"
+                       Content="The same as this computer" FontSize="13"/>
+          <RadioButton GroupName="appearance" IsChecked="{Binding LooksLight}"
+                       Content="Light" FontSize="13"/>
+          <RadioButton GroupName="appearance" IsChecked="{Binding LooksDark}"
+                       Content="Dark" FontSize="13"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
     <!-- Updates -->
     <Border Classes="card" Margin="0,14,0,0" Padding="0">
       <StackPanel>

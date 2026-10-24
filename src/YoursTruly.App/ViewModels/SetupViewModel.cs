@@ -25,6 +25,7 @@ public sealed partial class SetupViewModel : ObservableObject
     private readonly IDatabasePicker? _databases;
     private readonly IClipboardWriter? _clipboard;
     private readonly Action? _databaseChanged;
+    private readonly Action<Appearance> _applyAppearance;
 
     public SetupViewModel(
         AppServices services,
@@ -33,8 +34,10 @@ public sealed partial class SetupViewModel : ObservableObject
         IDatabasePicker? databases = null,
         Action? databaseChanged = null,
         IClipboardWriter? clipboard = null,
-        IUpdates? updates = null)
+        IUpdates? updates = null,
+        Action<Appearance>? applyAppearance = null)
     {
+        _applyAppearance = applyAppearance ?? Looks.Apply;
         _services = services;
         _updates = updates ?? new UpdateService(UpdateService.DefaultRepository);
         _store = store;
@@ -55,6 +58,7 @@ public sealed partial class SetupViewModel : ObservableObject
         _testNumber = settings.Twilio.TestNumber;
         _messagingServiceSid = settings.Twilio.MessagingServiceSid;
         _textVia = settings.TextVia;
+        _appearance = settings.Appearance;
         _gatewayUrl = settings.AndroidGateway.BaseUrl;
         _gatewayUser = settings.AndroidGateway.Username;
         _gatewayPassword = settings.AndroidGateway.Password;
@@ -125,6 +129,41 @@ public sealed partial class SetupViewModel : ObservableObject
             ? ""
             : Lists.FirstOrDefault(l => string.Equals(l.Path, DatabasePath, StringComparison.Ordinal))?.Name
               ?? SavedList.NameFor(DatabasePath);
+
+    // --- how it looks ----------------------------------------------------------------
+    /// <summary>Takes effect the moment it is clicked and is saved at once, without the
+    /// rest of the screen: something you can see changing does not need a Save button,
+    /// and one that reverted at the next start because Save was never pressed would
+    /// look like a bug.</summary>
+    [ObservableProperty] private Appearance _appearance;
+
+    public bool LooksLikeComputer
+    {
+        get => Appearance == Appearance.System;
+        set { if (value) Appearance = Appearance.System; }
+    }
+
+    public bool LooksLight
+    {
+        get => Appearance == Appearance.Light;
+        set { if (value) Appearance = Appearance.Light; }
+    }
+
+    public bool LooksDark
+    {
+        get => Appearance == Appearance.Dark;
+        set { if (value) Appearance = Appearance.Dark; }
+    }
+
+    partial void OnAppearanceChanged(Appearance value)
+    {
+        _applyAppearance(value);
+        _saved = _saved with { Appearance = value };
+        _store.Save(_saved);
+        Log.Record("settings.appearance", Log.Details(("appearance", value.ToString())));
+        foreach (var name in (string[])["LooksLikeComputer", "LooksLight", "LooksDark"])
+            OnPropertyChanged(name);
+    }
 
     // --- updates ---------------------------------------------------------------------
     private readonly IUpdates _updates;
@@ -331,7 +370,8 @@ public sealed partial class SetupViewModel : ObservableObject
         [nameof(IsDirty), nameof(SaveHint), nameof(OtherLists), nameof(HasOtherLists),
          nameof(EmailStatus), nameof(TwilioStatus),
          nameof(BackupStatus), nameof(EmailBusy), nameof(TwilioBusy), nameof(EmailOk), nameof(TwilioOk),
-         nameof(TwilioPurpose), nameof(TestTextLabel), nameof(TextRouteBlocked)];
+         nameof(TwilioPurpose), nameof(TestTextLabel), nameof(TextRouteBlocked),
+         nameof(LooksLikeComputer), nameof(LooksLight), nameof(LooksDark)];
 
     /// <summary>Any field changing can make the screen dirty, and there are a lot of
     /// fields. Watching them all in one place beats remembering to add each new one.</summary>
@@ -354,6 +394,7 @@ public sealed partial class SetupViewModel : ObservableObject
     {
         DatabasePath = DatabasePath ?? "",
         TextVia = TextVia,
+        Appearance = Appearance,
         AndroidGateway = new AndroidGatewaySettings
         {
             BaseUrl = GatewayUrl.Trim(),

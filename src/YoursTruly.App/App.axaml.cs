@@ -13,7 +13,9 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var window = new MainWindow(AppServices.Start());
+            var services = AppServices.Start();
+            Looks.Apply(new Messaging.Settings.SettingsStore(services.SettingsPath).Load().Appearance);
+            var window = new MainWindow(services);
             desktop.MainWindow = window;
 
             // Deliberately not awaited: the window opens now, and the rail grows a

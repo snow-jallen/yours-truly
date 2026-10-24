@@ -80,6 +80,16 @@ public static class TextTransports
         transport is not TextTransport.Twilio;
 }
 
+/// <summary>Light or dark. Most people never touch this and get whatever their
+/// computer is set to; it is here for the ones who want this one app different.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<Appearance>))]
+public enum Appearance
+{
+    System = 0,
+    Light = 1,
+    Dark = 2,
+}
+
 /// <summary>The SMS Gateway app running on the user's Android phone, in local-server
 /// mode — the phone answers on the home network and nothing leaves it for anyone
 /// else's server, which matters when the payload is 427 people's phone numbers.</summary>
@@ -151,6 +161,8 @@ public sealed record AppSettings
     /// knowing where it is.</summary>
     public string DefaultAreaCode { get; init; } = "435";
 
+    public Appearance Appearance { get; init; } = Appearance.System;
+
     /// <summary>Written out because a record compares a list by reference, and one read
     /// back off disk is never the same object as the one that was written. Without
     /// this, Setup would report unsaved changes the moment it opened, every time.</summary>
@@ -163,7 +175,8 @@ public sealed record AppSettings
         && Email == other.Email
         && AndroidGateway == other.AndroidGateway
         && Twilio == other.Twilio
-        && DefaultAreaCode == other.DefaultAreaCode;
+        && DefaultAreaCode == other.DefaultAreaCode
+        && Appearance == other.Appearance;
 
     public override int GetHashCode() => HashCode.Combine(
         DatabasePath, Lists.Count, TextVia, Signature, Email, AndroidGateway, Twilio, DefaultAreaCode);
