@@ -158,10 +158,18 @@ On the Setup screen, under *Where texts go out from*, choose your phone.
 
 ### If you have an iPhone
 
-**Yours Truly must be running on a Mac.** The iPhone route works by asking the Messages app
-to send, and Messages only exists on macOS — on Windows or Linux the option is greyed
-out, and a setting carried over from a Mac is blocked with an explanation rather than
-failing once for every person.
+There are two ways, and both need a Mac signed in to Messages with your Apple Account:
+
+- **Yours Truly running on that Mac** — the steps just below. Nothing else to install.
+- **Yours Truly running anywhere else** — Windows, Linux, or a different Mac, even at
+  home while the Mac is at the office. Install the free BlueBubbles Server on the Mac and
+  Yours Truly asks it over the network. **[BLUEBUBBLES.md](BLUEBUBBLES.md) walks through
+  it**, about half an hour.
+
+On the Mac itself, the option *From my iPhone, through the Messages app on this Mac*
+works by asking Messages to send. Messages only exists on macOS, so on Windows or Linux
+that option is greyed out, and a setting carried over from a Mac is blocked with an
+explanation rather than failing once for every person.
 
 1. On the Mac, open **Messages** and make sure you are signed in.
 2. On the iPhone: **Settings → Apps → Messages → Text Message Forwarding**, and switch

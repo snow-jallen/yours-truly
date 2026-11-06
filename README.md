@@ -158,9 +158,13 @@ because each message really is its own message.
 
 **Yes, through your own phone — and which phone decides how.** Setup has a toggle:
 
-- **iPhone** — Yours Truly asks the Messages app on your Mac to send. **This only works with
-  Yours Truly running on a Mac**; Messages exists nowhere else, so on Windows or Linux the
-  option is refused rather than accepted and then failing at the moment you press Send.
+- **iPhone, with Yours Truly on the Mac** — Yours Truly asks the Messages app on that Mac
+  to send. Messages exists nowhere else, so on Windows or Linux this option is refused
+  rather than accepted and then failing at the moment you press Send.
+- **iPhone, with Yours Truly anywhere** — install the free
+  [BlueBubbles Server](https://bluebubbles.app) on a Mac signed in to Messages, and Yours
+  Truly asks it over the network. Windows, Linux, or at home while the Mac is at the
+  office. [BLUEBUBBLES.md](BLUEBUBBLES.md) is the step-by-step guide.
 - **Android** — install [SMS Gateway for Android](https://sms-gate.app/), turn on Local
   Server, and paste the address and sign-in it shows into Setup. Yours Truly then asks your
   phone over your own Wi-Fi. This works from any computer, and in local-server mode the
