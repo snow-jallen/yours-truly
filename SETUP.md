@@ -158,13 +158,16 @@ On the Setup screen, under *Where texts go out from*, choose your phone.
 
 ### If you have an iPhone
 
-There are two ways, and both need a Mac signed in to Messages with your Apple Account:
+Every way needs a Mac signed in to Messages with your Apple Account:
 
 - **Yours Truly running on that Mac** — the steps just below. Nothing else to install.
 - **Yours Truly running anywhere else** — Windows, Linux, or a different Mac, even at
-  home while the Mac is at the office. Install the free BlueBubbles Server on the Mac and
-  Yours Truly asks it over the network. **[BLUEBUBBLES.md](BLUEBUBBLES.md) walks through
-  it**, about half an hour.
+  home while the Mac is at the office. Install Yours Truly on the Mac too and switch on
+  *Let my other computers text through this Mac*. **[TEXTING-THROUGH-A-MAC.md](TEXTING-THROUGH-A-MAC.md)
+  walks through it**, about twenty minutes.
+- The same, through the third-party BlueBubbles Server instead —
+  [BLUEBUBBLES.md](BLUEBUBBLES.md). It needs Full Disk Access on the Mac; the route
+  above does not.
 
 On the Mac itself, the option *From my iPhone, through the Messages app on this Mac*
 works by asking Messages to send. Messages only exists on macOS, so on Windows or Linux
