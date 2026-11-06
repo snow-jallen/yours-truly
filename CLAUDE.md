@@ -113,8 +113,8 @@ Notes never appear there. A note is nobody else's business.
 ## Sending rules
 
 - **Pacing belongs to the route, not the channel.** The 2-to-11-second gaps exist to
-  stop a carrier flagging the user's *own* phone number, so they apply to Mac Messages
-  and the Android gateway and not to Twilio, which paces itself. `TextTransports
+  stop a carrier flagging the user's *own* phone number, so they apply to Mac Messages,
+  BlueBubbles and the Android gateway and not to Twilio, which paces itself. `TextTransports
   .NeedsPacing` is the one place that says so; `BroadcastService` takes it as
   `paceTexts` and defaults to true, so a route added later is protected until somebody
   decides otherwise.

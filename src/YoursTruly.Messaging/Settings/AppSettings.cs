@@ -60,6 +60,12 @@ public enum TextTransport
     /// the local network. Same idea as the Mac route and the same limits, but it works
     /// from any computer and needs no Mac.</summary>
     AndroidGateway = 3,
+
+    /// <summary>BlueBubbles Server on a Mac — this one or one somewhere else — which
+    /// drives that Mac's Messages app the way <see cref="MacMessages"/> does here. It is
+    /// how an iPhone owner sends from their own number with the app running on Windows
+    /// or Linux, or on a Mac that is not the one signed in to Messages.</summary>
+    BlueBubbles = 4,
 }
 
 public static class TextTransports
@@ -102,6 +108,21 @@ public sealed record AndroidGatewaySettings
     public string Password { get; init; } = "";
 
     public bool IsComplete => BaseUrl.Trim().Length > 0 && Username.Length > 0 && Password.Length > 0;
+}
+
+/// <summary>BlueBubbles Server, running on whichever Mac is signed in to Messages with
+/// the user's Apple account. Yours Truly asks it over the network, so the Mac can be at
+/// the office while the app runs at home — as long as the address reaches it.</summary>
+public sealed record BlueBubblesSettings
+{
+    /// <summary>The address BlueBubbles Server shows, e.g. http://office-mac:1234 or a
+    /// Cloudflare or ngrok address.</summary>
+    public string ServerUrl { get; init; } = "";
+
+    /// <summary>The server password set in BlueBubbles Server.</summary>
+    public string Password { get; init; } = "";
+
+    public bool IsComplete => ServerUrl.Trim().Length > 0 && Password.Length > 0;
 }
 
 /// <summary>One list of people and where it is kept — "Soccer team", "Primary class",
@@ -155,6 +176,7 @@ public sealed record AppSettings
             ? Email
             : Email with { DisplayName = YoursTruly.Core.Domain.Signature.SenderName(Signature) };
     public AndroidGatewaySettings AndroidGateway { get; init; } = new();
+    public BlueBubblesSettings BlueBubbles { get; init; } = new();
     public TwilioSettings Twilio { get; init; } = new();
 
     /// <summary>Supplied when a file prints a seven-digit number, with no way of
@@ -174,12 +196,14 @@ public sealed record AppSettings
         && Signature == other.Signature
         && Email == other.Email
         && AndroidGateway == other.AndroidGateway
+        && BlueBubbles == other.BlueBubbles
         && Twilio == other.Twilio
         && DefaultAreaCode == other.DefaultAreaCode
         && Appearance == other.Appearance;
 
     public override int GetHashCode() => HashCode.Combine(
-        DatabasePath, Lists.Count, TextVia, Signature, Email, AndroidGateway, Twilio, DefaultAreaCode);
+        DatabasePath, Lists.Count, TextVia, Signature, Email, AndroidGateway, BlueBubbles,
+        HashCode.Combine(Twilio, DefaultAreaCode));
 }
 
 public interface ISettingsStore

@@ -43,6 +43,12 @@ public sealed class SettingsStoreTests : IDisposable
                 FromNumber = "+14355550188",
                 TestNumber = "+14355550164",
             },
+            BlueBubbles = new BlueBubblesSettings
+            {
+                ServerUrl = "http://office-mac:1234",
+                Password = "correct horse",
+            },
+            TextVia = TextTransport.BlueBubbles,
             DefaultAreaCode = "801",
         };
 
