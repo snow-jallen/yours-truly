@@ -668,6 +668,7 @@ public sealed class UserInterfaceTests : IDisposable
     [InlineData(TextTransport.Twilio, false)]
     [InlineData(TextTransport.AndroidGateway, true)]
     [InlineData(TextTransport.BlueBubbles, true)]
+    [InlineData(TextTransport.MacRelay, true)]
     public Task The_wait_between_texts_is_only_mentioned_when_there_is_one(
         TextTransport via, bool paced) =>
         InWindow(async (_, model) =>
@@ -1256,23 +1257,25 @@ public sealed class UserInterfaceTests : IDisposable
         }, _folder);
 
     [Fact]
-    public Task Setup_links_to_a_bluebubbles_guide_that_exists() =>
+    public Task Setup_links_only_to_guides_that_exist() =>
         InWindow(async (window, model) =>
         {
             model.ShowSetup();
-            ((SetupViewModel)model.Current).UseBlueBubbles = true;
             Dispatcher.UIThread.RunJobs();
             window.Measure(window.ClientSize);
             window.Arrange(new Rect(window.ClientSize));
 
-            var link = Assert.Single(window.GetVisualDescendants().OfType<HyperlinkButton>(),
-                l => l.NavigateUri?.AbsolutePath.EndsWith(".md", StringComparison.Ordinal) == true);
-            Assert.True(link.IsEffectivelyVisible);
+            var guides = window.GetVisualDescendants().OfType<HyperlinkButton>()
+                .Where(l => l.NavigateUri?.AbsolutePath.EndsWith(".md", StringComparison.Ordinal) == true)
+                .Select(l => Path.GetFileName(l.NavigateUri!.AbsolutePath))
+                .ToList();
+            Assert.Contains("BLUEBUBBLES.md", guides);
+            Assert.Contains("TEXTING-THROUGH-A-MAC.md", guides);
 
-            // The link goes to the copy on GitHub, so a guide renamed or moved here
-            // would leave the button pointing at nothing.
-            var guide = Path.GetFileName(link.NavigateUri!.AbsolutePath);
-            Assert.True(File.Exists(Path.Combine(TestPaths.RepoRoot!, guide)), $"{guide} is not in the repository");
+            // The links go to the copies on GitHub, so a guide renamed or moved here
+            // would leave a button pointing at nothing.
+            foreach (var guide in guides)
+                Assert.True(File.Exists(Path.Combine(TestPaths.RepoRoot!, guide)), $"{guide} is not in the repository");
             await Task.CompletedTask;
         }, _folder);
 

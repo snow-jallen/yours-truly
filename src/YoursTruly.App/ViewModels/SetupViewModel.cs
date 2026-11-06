@@ -7,6 +7,8 @@ using YoursTruly.Messaging.Settings;
 using YoursTruly.Messaging.Android;
 using YoursTruly.Messaging.BlueBubbles;
 using YoursTruly.Messaging.Mac;
+using YoursTruly.Messaging.Relay;
+using YoursTruly.App.Relay;
 using YoursTruly.Messaging.Twilio;
 using YoursTruly.Core.Diagnostics;
 using YoursTruly.Core.Domain;
@@ -36,8 +38,10 @@ public sealed partial class SetupViewModel : ObservableObject
         Action? databaseChanged = null,
         IClipboardWriter? clipboard = null,
         IUpdates? updates = null,
-        Action<Appearance>? applyAppearance = null)
+        Action<Appearance>? applyAppearance = null,
+        IRelayAgent? relayAgent = null)
     {
+        _relay = relayAgent ?? (OperatingSystem.IsMacOS() ? new LaunchAgentRelay() : new NoRelayAgent());
         _applyAppearance = applyAppearance ?? Looks.Apply;
         _services = services;
         _updates = updates ?? new UpdateService(UpdateService.DefaultRepository);
@@ -65,6 +69,10 @@ public sealed partial class SetupViewModel : ObservableObject
         _gatewayPassword = settings.AndroidGateway.Password;
         _blueBubblesUrl = settings.BlueBubbles.ServerUrl;
         _blueBubblesPassword = settings.BlueBubbles.Password;
+        _macRelayAddress = settings.MacRelay.Address;
+        _macRelayKey = settings.MacRelay.Key;
+        _relayKey = settings.RelayHost.Key;
+        _relayOn = _relay.IsSupported && _relay.IsOn;
         _databasePath = services.DatabasePath;
         _settingsPath = store.Path;
         // The open list has to be in the switcher, so if it is not there yet it is
@@ -286,6 +294,9 @@ public sealed partial class SetupViewModel : ObservableObject
     [ObservableProperty] private string _blueBubblesUrl;
     [ObservableProperty] private string _blueBubblesPassword;
 
+    [ObservableProperty] private string _macRelayAddress;
+    [ObservableProperty] private string _macRelayKey;
+
     public bool UseTwilioForText
     {
         get => TextVia == TextTransport.Twilio;
@@ -305,6 +316,15 @@ public sealed partial class SetupViewModel : ObservableObject
     {
         get => TextVia == TextTransport.AndroidGateway;
         set { if (value) TextVia = TextTransport.AndroidGateway; }
+    }
+
+    /// <summary>An iPhone, through Yours Truly on a Mac that has "Let my other computers
+    /// text through this Mac" switched on. Offered everywhere, including on a Mac — a
+    /// laptop at home can send through the Mac at the office.</summary>
+    public bool UseMacRelay
+    {
+        get => TextVia == TextTransport.MacRelay;
+        set { if (value) TextVia = TextTransport.MacRelay; }
     }
 
     /// <summary>An iPhone, through BlueBubbles Server on a Mac. Offered everywhere: it is
@@ -335,18 +355,19 @@ public sealed partial class SetupViewModel : ObservableObject
     {
         TextTransport.MacMessages => "Text myself through Messages",
         TextTransport.AndroidGateway => "Text myself through my phone",
-        TextTransport.BlueBubbles => "Text myself through my Mac",
+        TextTransport.BlueBubbles => "Text myself through BlueBubbles",
+        TextTransport.MacRelay => "Text myself through my Mac",
         _ => "Send myself a test text",
     };
 
     public string TextRouteBlockedMessage =>
         "Texting from your iPhone needs Yours Truly running on a Mac, because it works by asking the Messages app to send. "
-        + "On this computer, choose BlueBubbles, which asks a Mac's Messages app over the network, or Twilio, or your Android phone if you have one. Your iPhone setting is kept for when you are back on the Mac.";
+        + "On this computer, choose \u201cthrough Yours Truly on a Mac\u201d, which asks a Mac's Messages app over the network, or Twilio, or your Android phone if you have one. Your iPhone setting is kept for when you are back on the Mac.";
 
     partial void OnTextViaChanged(TextTransport value)
     {
         foreach (var name in (string[])
-                 ["UseTwilioForText", "UseIphone", "UseAndroid", "UseBlueBubbles", "TextRouteBlocked",
+                 ["UseTwilioForText", "UseIphone", "UseAndroid", "UseBlueBubbles", "UseMacRelay", "TextRouteBlocked",
                   "TwilioPurpose", "TestTextLabel"])
             OnPropertyChanged(name);
     }
@@ -388,7 +409,8 @@ public sealed partial class SetupViewModel : ObservableObject
          nameof(EmailStatus), nameof(TwilioStatus),
          nameof(BackupStatus), nameof(EmailBusy), nameof(TwilioBusy), nameof(EmailOk), nameof(TwilioOk),
          nameof(TwilioPurpose), nameof(TestTextLabel), nameof(TextRouteBlocked),
-         nameof(LooksLikeComputer), nameof(LooksLight), nameof(LooksDark)];
+         nameof(LooksLikeComputer), nameof(LooksLight), nameof(LooksDark),
+         nameof(RelayOn), nameof(RelayStatus), nameof(RelayBusy), nameof(RelayStateLine), nameof(RelayHasKey)];
 
     /// <summary>Any field changing can make the screen dirty, and there are a lot of
     /// fields. Watching them all in one place beats remembering to add each new one.</summary>
@@ -423,6 +445,12 @@ public sealed partial class SetupViewModel : ObservableObject
             ServerUrl = BlueBubblesUrl.Trim(),
             Password = BlueBubblesPassword.Trim(),
         },
+        MacRelay = new MacRelaySettings
+        {
+            Address = MacRelayAddress.Trim(),
+            Key = MacRelayKey.Trim(),
+        },
+        RelayHost = new RelayHostSettings { Key = RelayKey },
         Lists = Lists,
         Signature = Core.Domain.Signature.Clean(Signature) ?? "",
         Email = new EmailSettings
@@ -456,7 +484,7 @@ public sealed partial class SetupViewModel : ObservableObject
             ("signed", Current.Signature.Length > 0), ("email", Current.Email.IsComplete),
             ("twilio", Current.Twilio.IsComplete), ("textVia", TextVia.ToString()),
             ("rcs", SendsRichText), ("androidGateway", Current.AndroidGateway.IsComplete),
-            ("blueBubbles", Current.BlueBubbles.IsComplete)));
+            ("blueBubbles", Current.BlueBubbles.IsComplete), ("macRelay", Current.MacRelay.IsComplete)));
     }
 
     [RelayCommand]
@@ -492,6 +520,8 @@ public sealed partial class SetupViewModel : ObservableObject
             {
                 TextTransport.MacMessages => new MessagesTextSender(new AppleScriptRunner()),
                 TextTransport.AndroidGateway => new AndroidGatewayTextSender(new HttpClient(), Current.AndroidGateway),
+                TextTransport.MacRelay => new RelayTextSender(
+                    new HttpClient { Timeout = RelayTextSender.Patience }, Current.MacRelay),
                 TextTransport.BlueBubbles => new BlueBubblesTextSender(
                     new HttpClient { Timeout = BlueBubblesTextSender.Patience }, Current.BlueBubbles),
                 _ => new TextSender(new TwilioGateway(Current.Twilio), Current.Twilio),
@@ -522,6 +552,121 @@ public sealed partial class SetupViewModel : ObservableObject
             TwilioStatus = check.Message;
         }
         finally { TwilioBusy = false; }
+    }
+
+    // --- this Mac, texting for the user's other computers ------------------------------
+    private readonly IRelayAgent _relay;
+
+    /// <summary>Only on a Mac: it is the Mac's Messages app that does the sending.</summary>
+    public bool RelayHostAvailable => _isMac && _relay.IsSupported;
+
+    /// <summary>Whether the login item is there — which is what actually decides whether
+    /// the relay runs, so it is read from there rather than kept in the settings.</summary>
+    [ObservableProperty] private bool _relayOn;
+    [ObservableProperty] private string _relayKey;
+    [ObservableProperty] private string _relayStatus = "";
+    [ObservableProperty] private bool _relayBusy;
+
+    public bool RelayHasKey => RelayKey.Length > 0;
+
+    public string RelayStateLine => RelayOn
+        ? "On. Your other computers can send texts through this Mac while it is awake and you are logged in."
+        : "Off. Nothing on this Mac is listening.";
+
+    /// <summary>Where the other computers should point. Read when shown rather than
+    /// once, since a laptop's address changes as it moves between networks.</summary>
+    public IReadOnlyList<RelayAddress> RelayAddresses =>
+        RelayHostAvailable ? RelayAddressBook.ForThisMac() : [];
+
+    partial void OnRelayOnChanged(bool value) => OnPropertyChanged(nameof(RelayStateLine));
+    partial void OnRelayKeyChanged(string value) => OnPropertyChanged(nameof(RelayHasKey));
+
+    [RelayCommand]
+    private void TurnOnRelay()
+    {
+        if (!RelayHostAvailable) return;
+        try
+        {
+            if (!RelayHasKey) RelayKey = Messaging.Relay.RelayKey.New();
+            _store.Save(Current);
+            MarkSaved();
+            _relay.TurnOn();
+            RelayOn = true;
+            OnPropertyChanged(nameof(RelayAddresses));
+            RelayStatus = "Switched on. Give your other computers one of the addresses below and the key. "
+                + "Then press \u201cText myself through this Mac\u201d once: macOS will ask whether Yours Truly may control Messages, and somebody has to be at this Mac to say OK.";
+        }
+        catch (Exception e)
+        {
+            Log.Failure("relay.on", e);
+            RelayStatus = e.Message;
+        }
+    }
+
+    [RelayCommand]
+    private void TurnOffRelay()
+    {
+        try
+        {
+            _relay.TurnOff();
+            RelayOn = false;
+            RelayStatus = "Switched off. Your other computers can no longer send through this Mac. The key is kept, so switching on again needs nothing changed on them.";
+        }
+        catch (Exception e)
+        {
+            Log.Failure("relay.off", e);
+            RelayStatus = e.Message;
+        }
+    }
+
+    /// <summary>For a key that has gone somewhere it should not have. Every other
+    /// computer stops working until it is given the new one, and the screen says so.</summary>
+    [RelayCommand]
+    private void NewRelayKey()
+    {
+        RelayKey = Messaging.Relay.RelayKey.New();
+        _store.Save(Current);
+        MarkSaved();
+        try
+        {
+            _relay.Restart();
+            RelayStatus = "New key made, and the old one no longer works. Each of your other computers needs the new one on its Setup screen before it can send again.";
+        }
+        catch (Exception e)
+        {
+            Log.Failure("relay.restart", e);
+            RelayStatus = e.Message;
+        }
+    }
+
+    [RelayCommand]
+    private async Task CopyRelayDetailsAsync()
+    {
+        if (_clipboard is null || !RelayHasKey) return;
+        var addresses = string.Join(Environment.NewLine, RelayAddresses.Select(a => $"  {a.Url}   ({a.Where})"));
+        await _clipboard.CopyAsync(
+            $"Address (use the first that works from that computer):{Environment.NewLine}{addresses}{Environment.NewLine}Key: {RelayKey}");
+        RelayStatus = "Copied the addresses and the key. Paste them somewhere only you can see — anybody with both can send texts as you.";
+    }
+
+    /// <summary>Sends a test the whole way round — out to this Mac's own listener and in
+    /// through Messages — which is also what makes macOS ask for permission to control
+    /// Messages, while somebody is sitting here to answer.</summary>
+    [RelayCommand]
+    private async Task TestRelayAsync()
+    {
+        RelayBusy = true;
+        RelayStatus = "Sending you a test through this Mac\u2026";
+        try
+        {
+            var sender = new RelayTextSender(
+                new HttpClient { Timeout = RelayTextSender.Patience },
+                new MacRelaySettings { Address = $"http://localhost:{RelayProtocol.DefaultPort}", Key = RelayKey });
+            var check = await sender.TestAsync(TestNumber.Trim());
+            RelayStatus = check.Message;
+            Log.Record("test.relay", Log.Details(("ok", check.Ok), ("result", Redact.Failure(check.Message))));
+        }
+        finally { RelayBusy = false; }
     }
 
     public bool CanBrowseForDatabase => _databases is not null;

@@ -105,7 +105,27 @@ public sealed class ScreenshotHarness(ITestOutputHelper output) : IDisposable
         window.GetVisualDescendants().OfType<TextBox>()
             .Single(t => t.PlaceholderText == "http://office-mac:1234").BringIntoView();
         Shoot(window, "6c-setup-bluebubbles");
+
+        // Through Yours Truly on a Mac, from the asking side.
+        setup.UseMacRelay = true;
+        setup.MacRelayAddress = "http://office-mac:47474";
+        setup.MacRelayKey = "ABCDE-FGHJK-MNPQR-STUVW-XYZ23";
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        window.GetVisualDescendants().OfType<TextBox>()
+            .Single(t => t.PlaceholderText == "http://office-mac:47474").BringIntoView();
+        Shoot(window, "6d-setup-mac-relay");
         setup.UseTwilioForText = true;
+
+        // And the Mac's own side, switched on — only ever shown on a Mac, so built
+        // here as a Mac would build it, with a stand-in for the login item.
+        var onMac = new SetupViewModel(services, store, isMac: true, relayAgent: new PretendLoginItem());
+        model.Current = onMac;
+        onMac.TurnOnRelayCommand.Execute(null);
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        window.GetVisualDescendants().OfType<Button>()
+            .First(b => Equals(b.Content, "Make a new key")).BringIntoView();
+        Shoot(window, "6e-setup-relay-host");
+        model.ShowSetup();
 
         // The dark palette, on the two screens with the most of it showing.
         Avalonia.Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark;
@@ -160,7 +180,7 @@ public sealed class ScreenshotHarness(ITestOutputHelper output) : IDisposable
 
         var shots = Directory.GetFiles(_folder, "*.png");
         output.WriteLine($"FOLDER {_folder} — {shots.Length} images");
-        Assert.Equal(16, shots.Length);
+        Assert.Equal(18, shots.Length);
         Assert.All(shots, f => Assert.True(new FileInfo(f).Length > 5000, $"{f} is suspiciously small"));
             return 0;
         };
@@ -269,4 +289,14 @@ public sealed class ScreenshotHarness(ITestOutputHelper output) : IDisposable
         };
 
     public void Dispose() { }
+
+    private sealed class PretendLoginItem : YoursTruly.App.Relay.IRelayAgent
+    {
+        public bool IsSupported => true;
+        public bool IsOn { get; private set; }
+        public void TurnOn() => IsOn = true;
+        public void TurnOff() => IsOn = false;
+        public void Restart() { }
+        public void EnsureRunning() { }
+    }
 }

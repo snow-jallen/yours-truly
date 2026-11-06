@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:YoursTruly.App.ViewModels"
              xmlns:settings="using:YoursTruly.Messaging.Settings"
+             xmlns:relay="using:YoursTruly.Messaging.Relay"
              x:Class="YoursTruly.App.Views.SetupView"
              x:DataType="vm:SetupViewModel">
 
@@ -266,6 +267,9 @@
             <TextBlock FontSize="11.5" Margin="24,-4,0,0" Foreground="{DynamicResource Ink3}"
                        TextWrapping="Wrap" IsVisible="{Binding !IphoneRouteAvailable}"
                        Text="Only available on a Mac — the iPhone route works by asking the Messages app to send, and Messages exists nowhere else."/>
+            <RadioButton GroupName="texttransport" IsChecked="{Binding UseMacRelay}"
+                         Content="From my iPhone, through Yours Truly on a Mac — at home, at the office, anywhere"
+                         FontSize="13"/>
             <RadioButton GroupName="texttransport" IsChecked="{Binding UseBlueBubbles}"
                          Content="From my iPhone, through BlueBubbles on a Mac — this one or one somewhere else"
                          FontSize="13"/>
@@ -310,6 +314,30 @@
             <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource Warn}"
                        Text="This is how Phone Link works: the computer asks, your phone's line delivers. Free, and unmistakably from you — replies arrive in your own Messages app. Messages must be open and signed in, your iPhone needs Text Message Forwarding switched on for this Mac, and the first send will ask macOS for permission to control Messages. Keep it to a few dozen at a time; a burst of hundreds from a personal line is what carriers throttle."/>
           </Border>
+
+          <!-- Through Yours Truly on a Mac -->
+          <StackPanel Spacing="9" IsVisible="{Binding UseMacRelay}">
+            <Border Background="{DynamicResource WarnSoft}" CornerRadius="8" Padding="12,10">
+              <StackPanel Spacing="8">
+                <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource Warn}"
+                           Text="Install Yours Truly on a Mac signed in to Messages with your Apple account, and on that Mac switch on &#x201C;Let my other computers text through this Mac&#x201D; in Setup. It shows an address and a key — copy them here. The Mac must be awake with you logged in, and this computer on the same network or the same Tailscale network. Texts to people without an iPhone go through your iPhone, so it has to be on and online too. Keep it to a few dozen at a time; a burst of hundreds from a personal line is what carriers throttle."/>
+                <HyperlinkButton Content="How to set this up, step by step" Padding="0" FontSize="12.5"
+                                 NavigateUri="https://github.com/snow-jallen/yours-truly/blob/main/TEXTING-THROUGH-A-MAC.md"/>
+              </StackPanel>
+            </Border>
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+              <StackPanel Grid.Column="0" Spacing="6">
+                <TextBlock Classes="eyebrow" Text="YOUR MAC'S ADDRESS"/>
+                <TextBox Text="{Binding MacRelayAddress}" Classes="mono"
+                         PlaceholderText="http://office-mac:47474"/>
+              </StackPanel>
+              <StackPanel Grid.Column="1" Spacing="6">
+                <TextBlock Classes="eyebrow" Text="KEY"/>
+                <TextBox Text="{Binding MacRelayKey}" Classes="mono" PasswordChar="•"
+                         PlaceholderText="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"/>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
 
           <!-- BlueBubbles only -->
           <StackPanel Spacing="9" IsVisible="{Binding UseBlueBubbles}">
@@ -359,6 +387,76 @@
 
           <Button Content="{Binding TestTextLabel}" HorizontalAlignment="Left"
                   Command="{Binding TestTextCommand}" IsEnabled="{Binding !TwilioBusy}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- This Mac, texting for the user's other computers -->
+    <Border Classes="card" Margin="0,14,0,0" Padding="0" IsVisible="{Binding RelayHostAvailable}">
+      <StackPanel>
+        <Border Background="{DynamicResource Surface2}" Padding="15,13"
+                BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel Grid.Column="0" Spacing="1">
+              <TextBlock Text="Let my other computers text through this Mac" FontWeight="SemiBold" FontSize="14"
+                         Foreground="{DynamicResource Ink}"/>
+              <TextBlock Text="So Yours Truly on Windows, Linux or another Mac can send from your iPhone's number"
+                         FontSize="12" Foreground="{DynamicResource Ink3}"/>
+            </StackPanel>
+            <Border Grid.Column="1" CornerRadius="20" Padding="10,4" VerticalAlignment="Center"
+                    Background="{DynamicResource GoodSoft}" IsVisible="{Binding RelayOn}">
+              <TextBlock Text="On" FontSize="12" FontWeight="SemiBold"
+                         Foreground="{DynamicResource Good}"/>
+            </Border>
+          </Grid>
+        </Border>
+        <StackPanel Margin="15" Spacing="12">
+          <Border Background="{DynamicResource Surface2}" CornerRadius="8" Padding="12,10"
+                  BorderBrush="{DynamicResource Line}" BorderThickness="1">
+            <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource Ink2}"
+                       Text="This Mac sends the texts through its Messages app, from your own number. It can only send — nothing can read your messages through it — and it only answers computers on this Mac's network or your Tailscale network that have the key. It sends at most 60 texts an hour and 200 a day. While it is on, a Yours Truly icon sits in the menu bar, with Pause on it."/>
+          </Border>
+
+          <TextBlock Text="{Binding RelayStateLine}" TextWrapping="Wrap" FontSize="13"
+                     Foreground="{DynamicResource Ink}"/>
+
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Content="Switch on" Command="{Binding TurnOnRelayCommand}" IsVisible="{Binding !RelayOn}"/>
+            <Button Content="Switch off" Command="{Binding TurnOffRelayCommand}" IsVisible="{Binding RelayOn}"/>
+            <Button Content="Text myself through this Mac" Command="{Binding TestRelayCommand}"
+                    IsVisible="{Binding RelayOn}" IsEnabled="{Binding !RelayBusy}"/>
+          </StackPanel>
+
+          <StackPanel Spacing="10" IsVisible="{Binding RelayHasKey}">
+            <StackPanel Spacing="6">
+              <TextBlock Classes="eyebrow" Text="ADDRESSES TO GIVE YOUR OTHER COMPUTERS"/>
+              <ItemsControl ItemsSource="{Binding RelayAddresses}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="relay:RelayAddress">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="0,2">
+                      <SelectableTextBlock Grid.Column="0" Text="{Binding Url}" Classes="mono" FontSize="13"
+                                           Foreground="{DynamicResource Ink}"/>
+                      <TextBlock Grid.Column="1" Text="{Binding Where}" FontSize="12" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource Ink3}" VerticalAlignment="Center"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+            <StackPanel Spacing="6">
+              <TextBlock Classes="eyebrow" Text="KEY"/>
+              <SelectableTextBlock Text="{Binding RelayKey}" Classes="mono" FontSize="15"
+                                   Foreground="{DynamicResource Ink}"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Content="Copy the addresses and key" Command="{Binding CopyRelayDetailsCommand}"
+                      IsVisible="{Binding CanCopyLog}"/>
+              <Button Content="Make a new key" Command="{Binding NewRelayKeyCommand}"/>
+            </StackPanel>
+          </StackPanel>
+
+          <TextBlock Text="{Binding RelayStatus}" TextWrapping="Wrap" FontSize="12.5"
+                     Foreground="{DynamicResource Ink2}"/>
         </StackPanel>
       </StackPanel>
     </Border>
