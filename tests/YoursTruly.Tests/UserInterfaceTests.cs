@@ -667,6 +667,7 @@ public sealed class UserInterfaceTests : IDisposable
     [Theory]
     [InlineData(TextTransport.Twilio, false)]
     [InlineData(TextTransport.AndroidGateway, true)]
+    [InlineData(TextTransport.BlueBubbles, true)]
     public Task The_wait_between_texts_is_only_mentioned_when_there_is_one(
         TextTransport via, bool paced) =>
         InWindow(async (_, model) =>
@@ -1248,9 +1249,30 @@ public sealed class UserInterfaceTests : IDisposable
 
             // A control that compiles but throws when it is realised would take the
             // whole screen down, so this is as much about it existing as where it goes.
-            var link = Assert.Single(window.GetVisualDescendants().OfType<HyperlinkButton>());
-            Assert.Equal("console.twilio.com", link.NavigateUri?.Host);
+            var link = Assert.Single(window.GetVisualDescendants().OfType<HyperlinkButton>(),
+                l => l.NavigateUri?.Host == "console.twilio.com");
             Assert.Equal("Open the Twilio console", link.Content);
+            await Task.CompletedTask;
+        }, _folder);
+
+    [Fact]
+    public Task Setup_links_to_a_bluebubbles_guide_that_exists() =>
+        InWindow(async (window, model) =>
+        {
+            model.ShowSetup();
+            ((SetupViewModel)model.Current).UseBlueBubbles = true;
+            Dispatcher.UIThread.RunJobs();
+            window.Measure(window.ClientSize);
+            window.Arrange(new Rect(window.ClientSize));
+
+            var link = Assert.Single(window.GetVisualDescendants().OfType<HyperlinkButton>(),
+                l => l.NavigateUri?.AbsolutePath.EndsWith(".md", StringComparison.Ordinal) == true);
+            Assert.True(link.IsEffectivelyVisible);
+
+            // The link goes to the copy on GitHub, so a guide renamed or moved here
+            // would leave the button pointing at nothing.
+            var guide = Path.GetFileName(link.NavigateUri!.AbsolutePath);
+            Assert.True(File.Exists(Path.Combine(TestPaths.RepoRoot!, guide)), $"{guide} is not in the repository");
             await Task.CompletedTask;
         }, _folder);
 

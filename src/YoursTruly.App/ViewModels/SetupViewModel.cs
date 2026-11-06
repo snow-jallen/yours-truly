@@ -5,6 +5,7 @@ using YoursTruly.Messaging;
 using YoursTruly.Messaging.Email;
 using YoursTruly.Messaging.Settings;
 using YoursTruly.Messaging.Android;
+using YoursTruly.Messaging.BlueBubbles;
 using YoursTruly.Messaging.Mac;
 using YoursTruly.Messaging.Twilio;
 using YoursTruly.Core.Diagnostics;
@@ -62,6 +63,8 @@ public sealed partial class SetupViewModel : ObservableObject
         _gatewayUrl = settings.AndroidGateway.BaseUrl;
         _gatewayUser = settings.AndroidGateway.Username;
         _gatewayPassword = settings.AndroidGateway.Password;
+        _blueBubblesUrl = settings.BlueBubbles.ServerUrl;
+        _blueBubblesPassword = settings.BlueBubbles.Password;
         _databasePath = services.DatabasePath;
         _settingsPath = store.Path;
         // The open list has to be in the switcher, so if it is not there yet it is
@@ -271,13 +274,17 @@ public sealed partial class SetupViewModel : ObservableObject
     public bool SendsRichText => MessagingServiceSid.Trim().Length > 0;
 
     /// <summary>Where texts leave from: a service, or the user's own phone — through
-    /// the Messages app on a Mac for an iPhone, or through a gateway app for an
-    /// Android. Both phone routes send from the user's real number.</summary>
+    /// the Messages app on this Mac or BlueBubbles on any Mac for an iPhone, or through
+    /// a gateway app for an Android. Every phone route sends from the user's real
+    /// number.</summary>
     [ObservableProperty] private TextTransport _textVia;
 
     [ObservableProperty] private string _gatewayUrl;
     [ObservableProperty] private string _gatewayUser;
     [ObservableProperty] private string _gatewayPassword;
+
+    [ObservableProperty] private string _blueBubblesUrl;
+    [ObservableProperty] private string _blueBubblesPassword;
 
     public bool UseTwilioForText
     {
@@ -300,6 +307,15 @@ public sealed partial class SetupViewModel : ObservableObject
         set { if (value) TextVia = TextTransport.AndroidGateway; }
     }
 
+    /// <summary>An iPhone, through BlueBubbles Server on a Mac. Offered everywhere: it is
+    /// a web call to the Mac, so it works from Windows and Linux, and from a Mac that is
+    /// not the one signed in to Messages.</summary>
+    public bool UseBlueBubbles
+    {
+        get => TextVia == TextTransport.BlueBubbles;
+        set { if (value) TextVia = TextTransport.BlueBubbles; }
+    }
+
     /// <summary>The iPhone route drives the Messages app, which only exists on a Mac.
     /// The Android route is an HTTP call, so it works from anywhere.</summary>
     public bool IphoneRouteAvailable => _isMac;
@@ -319,17 +335,18 @@ public sealed partial class SetupViewModel : ObservableObject
     {
         TextTransport.MacMessages => "Text myself through Messages",
         TextTransport.AndroidGateway => "Text myself through my phone",
+        TextTransport.BlueBubbles => "Text myself through my Mac",
         _ => "Send myself a test text",
     };
 
     public string TextRouteBlockedMessage =>
         "Texting from your iPhone needs Yours Truly running on a Mac, because it works by asking the Messages app to send. "
-        + "On this computer, choose Twilio, or your Android phone if you have one. Your iPhone setting is kept for when you are back on the Mac.";
+        + "On this computer, choose BlueBubbles, which asks a Mac's Messages app over the network, or Twilio, or your Android phone if you have one. Your iPhone setting is kept for when you are back on the Mac.";
 
     partial void OnTextViaChanged(TextTransport value)
     {
         foreach (var name in (string[])
-                 ["UseTwilioForText", "UseIphone", "UseAndroid", "TextRouteBlocked",
+                 ["UseTwilioForText", "UseIphone", "UseAndroid", "UseBlueBubbles", "TextRouteBlocked",
                   "TwilioPurpose", "TestTextLabel"])
             OnPropertyChanged(name);
     }
@@ -401,6 +418,11 @@ public sealed partial class SetupViewModel : ObservableObject
             Username = GatewayUser.Trim(),
             Password = GatewayPassword.Trim(),
         },
+        BlueBubbles = new BlueBubblesSettings
+        {
+            ServerUrl = BlueBubblesUrl.Trim(),
+            Password = BlueBubblesPassword.Trim(),
+        },
         Lists = Lists,
         Signature = Core.Domain.Signature.Clean(Signature) ?? "",
         Email = new EmailSettings
@@ -433,7 +455,8 @@ public sealed partial class SetupViewModel : ObservableObject
         Log.Record("settings.save", Log.Details(
             ("signed", Current.Signature.Length > 0), ("email", Current.Email.IsComplete),
             ("twilio", Current.Twilio.IsComplete), ("textVia", TextVia.ToString()),
-            ("rcs", SendsRichText), ("androidGateway", Current.AndroidGateway.IsComplete)));
+            ("rcs", SendsRichText), ("androidGateway", Current.AndroidGateway.IsComplete),
+            ("blueBubbles", Current.BlueBubbles.IsComplete)));
     }
 
     [RelayCommand]
@@ -469,6 +492,8 @@ public sealed partial class SetupViewModel : ObservableObject
             {
                 TextTransport.MacMessages => new MessagesTextSender(new AppleScriptRunner()),
                 TextTransport.AndroidGateway => new AndroidGatewayTextSender(new HttpClient(), Current.AndroidGateway),
+                TextTransport.BlueBubbles => new BlueBubblesTextSender(
+                    new HttpClient { Timeout = BlueBubblesTextSender.Patience }, Current.BlueBubbles),
                 _ => new TextSender(new TwilioGateway(Current.Twilio), Current.Twilio),
             };
             var check = await sender.TestAsync(

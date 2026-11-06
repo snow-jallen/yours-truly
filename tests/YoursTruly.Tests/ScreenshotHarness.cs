@@ -96,6 +96,17 @@ public sealed class ScreenshotHarness(ITestOutputHelper output) : IDisposable
         ((SendViewModel)model.Current).TickLeftOutCommand.Execute(null);
         model.ShowSetup(); Shoot(window, "6-setup");
 
+        // The iPhone-through-BlueBubbles route, scrolled to, with its two boxes filled.
+        var setup = (SetupViewModel)model.Current;
+        setup.UseBlueBubbles = true;
+        setup.BlueBubblesUrl = "http://office-mac:1234";
+        setup.BlueBubblesPassword = "correct horse battery";
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        window.GetVisualDescendants().OfType<TextBox>()
+            .Single(t => t.PlaceholderText == "http://office-mac:1234").BringIntoView();
+        Shoot(window, "6c-setup-bluebubbles");
+        setup.UseTwilioForText = true;
+
         // The dark palette, on the two screens with the most of it showing.
         Avalonia.Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark;
         Shoot(window, "6b-setup-dark");
@@ -149,7 +160,7 @@ public sealed class ScreenshotHarness(ITestOutputHelper output) : IDisposable
 
         var shots = Directory.GetFiles(_folder, "*.png");
         output.WriteLine($"FOLDER {_folder} — {shots.Length} images");
-        Assert.Equal(15, shots.Length);
+        Assert.Equal(16, shots.Length);
         Assert.All(shots, f => Assert.True(new FileInfo(f).Length > 5000, $"{f} is suspiciously small"));
             return 0;
         };

@@ -266,6 +266,9 @@
             <TextBlock FontSize="11.5" Margin="24,-4,0,0" Foreground="{DynamicResource Ink3}"
                        TextWrapping="Wrap" IsVisible="{Binding !IphoneRouteAvailable}"
                        Text="Only available on a Mac — the iPhone route works by asking the Messages app to send, and Messages exists nowhere else."/>
+            <RadioButton GroupName="texttransport" IsChecked="{Binding UseBlueBubbles}"
+                         Content="From my iPhone, through BlueBubbles on a Mac — this one or one somewhere else"
+                         FontSize="13"/>
             <RadioButton GroupName="texttransport" IsChecked="{Binding UseAndroid}"
                          Content="From my Android phone, through the SMS Gateway app"
                          FontSize="13"/>
@@ -307,6 +310,29 @@
             <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource Warn}"
                        Text="This is how Phone Link works: the computer asks, your phone's line delivers. Free, and unmistakably from you — replies arrive in your own Messages app. Messages must be open and signed in, your iPhone needs Text Message Forwarding switched on for this Mac, and the first send will ask macOS for permission to control Messages. Keep it to a few dozen at a time; a burst of hundreds from a personal line is what carriers throttle."/>
           </Border>
+
+          <!-- BlueBubbles only -->
+          <StackPanel Spacing="9" IsVisible="{Binding UseBlueBubbles}">
+            <Border Background="{DynamicResource WarnSoft}" CornerRadius="8" Padding="12,10">
+              <StackPanel Spacing="8">
+                <TextBlock TextWrapping="Wrap" FontSize="12.5" Foreground="{DynamicResource Warn}"
+                           Text="BlueBubbles is a free app for the Mac that lets other computers use its Messages app. Install it on a Mac signed in to Messages with your Apple account, and Yours Truly can send from your own number while running anywhere — at home while the Mac is at the office, even. The Mac must stay awake with BlueBubbles running, and texts to people without an iPhone go through your iPhone, so it has to be on and online too. Keep it to a few dozen at a time; a burst of hundreds from a personal line is what carriers throttle."/>
+                <HyperlinkButton Content="How to set up BlueBubbles, step by step" Padding="0" FontSize="12.5"
+                                 NavigateUri="https://github.com/snow-jallen/yours-truly/blob/main/BLUEBUBBLES.md"/>
+              </StackPanel>
+            </Border>
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="12" RowDefinitions="Auto" RowSpacing="10">
+              <StackPanel Grid.Column="0" Spacing="6">
+                <TextBlock Classes="eyebrow" Text="YOUR MAC'S ADDRESS IN BLUEBUBBLES"/>
+                <TextBox Text="{Binding BlueBubblesUrl}" Classes="mono"
+                         PlaceholderText="http://office-mac:1234"/>
+              </StackPanel>
+              <StackPanel Grid.Column="1" Spacing="6">
+                <TextBlock Classes="eyebrow" Text="SERVER PASSWORD"/>
+                <TextBox Text="{Binding BlueBubblesPassword}" PasswordChar="•"/>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
 
           <!-- Android only -->
           <StackPanel Spacing="9" IsVisible="{Binding UseAndroid}">

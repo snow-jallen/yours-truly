@@ -8,6 +8,7 @@ using YoursTruly.Messaging;
 using YoursTruly.Messaging.Email;
 using YoursTruly.Messaging.Settings;
 using YoursTruly.Messaging.Android;
+using YoursTruly.Messaging.BlueBubbles;
 using YoursTruly.Messaging.Mac;
 using YoursTruly.Messaging.Twilio;
 using Entities = YoursTruly.Data.Entities;
@@ -270,7 +271,7 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
         _quota = GmailQuota.For(settings.EmailAs.Host, settings.EmailAs.Address);
 
         BlockedReason = settings.TextVia == TextTransport.MacMessages && !_isMac
-            ? "Texts cannot go out from this computer: Yours Truly is set to send from your iPhone, which needs to run on a Mac. Open Setup and choose Twilio, or your Android phone."
+            ? "Texts cannot go out from this computer: Yours Truly is set to send from your iPhone, which needs to run on a Mac. Open Setup and choose BlueBubbles, which reaches a Mac over the network, or Twilio, or your Android phone."
             : "";
     }
 
@@ -745,6 +746,8 @@ public sealed partial class SendViewModel(AppServices services, ISettingsStore s
                     TextTransport.MacMessages => new MessagesTextSender(new AppleScriptRunner()),
                     TextTransport.AndroidGateway =>
                         new AndroidGatewayTextSender(new HttpClient(), settings.AndroidGateway),
+                    TextTransport.BlueBubbles => new BlueBubblesTextSender(
+                        new HttpClient { Timeout = BlueBubblesTextSender.Patience }, settings.BlueBubbles),
                     _ => new TextSender(new TwilioGateway(settings.Twilio), settings.Twilio),
                 },
                 [Core.Domain.Channel.Voice] = new VoiceSender(new TwilioGateway(settings.Twilio), settings.Twilio),

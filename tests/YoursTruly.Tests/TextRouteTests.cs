@@ -54,6 +54,57 @@ public sealed class TextRouteTests : IDisposable
     }
 
     [Fact]
+    public void An_iphone_owner_off_a_mac_can_still_send_through_bluebubbles()
+    {
+        var setup = Setup(isMac: false);
+        setup.UseBlueBubbles = true;
+
+        Assert.True(setup.UseBlueBubbles);
+        Assert.False(setup.UseTwilioForText);
+        Assert.False(setup.TextRouteBlocked);
+        Assert.Equal("Text myself through my Mac", setup.TestTextLabel);
+        Assert.Equal("Used for phone calls — your texts go out from your own phone", setup.TwilioPurpose);
+    }
+
+    [Fact]
+    public void The_bluebubbles_details_are_saved_with_everything_else()
+    {
+        var setup = Setup(isMac: false);
+        setup.UseBlueBubbles = true;
+        setup.BlueBubblesUrl = "  http://office-mac:1234  ";
+        setup.BlueBubblesPassword = "correct horse";
+        Assert.True(setup.IsDirty);
+
+        setup.SaveCommand.Execute(null);
+
+        var saved = _store.Load();
+        Assert.Equal(TextTransport.BlueBubbles, saved.TextVia);
+        Assert.Equal("http://office-mac:1234", saved.BlueBubbles.ServerUrl);
+        Assert.Equal("correct horse", saved.BlueBubbles.Password);
+        Assert.False(setup.IsDirty);
+    }
+
+    [Fact]
+    public async Task Sending_through_bluebubbles_is_never_blocked_off_a_mac()
+    {
+        _store.Save(_store.Load() with { TextVia = TextTransport.BlueBubbles });
+
+        var send = new SendViewModel(_services, _store, isMac: false);
+        await send.LoadAsync();
+
+        Assert.False(send.IsBlocked);
+    }
+
+    [Fact]
+    public void The_blocked_iphone_route_points_at_the_one_that_works_here()
+    {
+        _store.Save(_store.Load() with { TextVia = TextTransport.MacMessages });
+        var setup = Setup(isMac: false);
+
+        Assert.Contains("BlueBubbles", setup.TextRouteBlockedMessage, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_choice_carried_over_from_a_mac_is_flagged_rather_than_silently_wrong()
     {
         _store.Save(_store.Load() with { TextVia = TextTransport.MacMessages });
