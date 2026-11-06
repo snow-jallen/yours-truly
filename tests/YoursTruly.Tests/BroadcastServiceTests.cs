@@ -249,6 +249,7 @@ public sealed class BroadcastServiceTests : IDisposable
         Assert.True(TextTransport.MacMessages.NeedsPacing());
         Assert.True(TextTransport.AndroidGateway.NeedsPacing());
         Assert.True(TextTransport.BlueBubbles.NeedsPacing());
+        Assert.True(TextTransport.MacRelay.NeedsPacing());
     }
 
     [Fact]

@@ -114,7 +114,13 @@ Notes never appear there. A note is nobody else's business.
 
 - **Pacing belongs to the route, not the channel.** The 2-to-11-second gaps exist to
   stop a carrier flagging the user's *own* phone number, so they apply to Mac Messages,
-  BlueBubbles and the Android gateway and not to Twilio, which paces itself. `TextTransports
+  the Mac relay, BlueBubbles and the Android gateway and not to Twilio, which paces itself.
+- **The Mac relay can only send.** `RelayServer` (Messaging/Relay) is Yours Truly on a
+  Mac texting for the user's other computers, run by a login item as `--relay`. It must
+  never grow a way to read messages — that is the whole case for it over BlueBubbles,
+  and it is why it needs no Full Disk Access. It answers only private and Tailscale
+  addresses (`NetworkScope`), only with the key, and within `SendAllowance`. Keep all
+  three checks ahead of anything that sends. `TextTransports
   .NeedsPacing` is the one place that says so; `BroadcastService` takes it as
   `paceTexts` and defaults to true, so a route added later is protected until somebody
   decides otherwise.

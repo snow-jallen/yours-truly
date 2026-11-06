@@ -66,6 +66,12 @@ public enum TextTransport
     /// how an iPhone owner sends from their own number with the app running on Windows
     /// or Linux, or on a Mac that is not the one signed in to Messages.</summary>
     BlueBubbles = 4,
+
+    /// <summary>Yours Truly on a Mac, with "Let my other computers text through this
+    /// Mac" switched on, which sends through that Mac's Messages app. The same reach as
+    /// <see cref="BlueBubbles"/> without another app: it can only send, never read, and
+    /// answers only its own network and Tailscale.</summary>
+    MacRelay = 5,
 }
 
 public static class TextTransports
@@ -125,6 +131,26 @@ public sealed record BlueBubblesSettings
     public bool IsComplete => ServerUrl.Trim().Length > 0 && Password.Length > 0;
 }
 
+/// <summary>Where this computer finds a Mac that texts for it — what the Mac's own Setup
+/// screen shows under "Let my other computers text through this Mac".</summary>
+public sealed record MacRelaySettings
+{
+    /// <summary>e.g. http://office-mac:47474. The port may be left off.</summary>
+    public string Address { get; init; } = "";
+
+    public string Key { get; init; } = "";
+
+    public bool IsComplete => Address.Trim().Length > 0 && Key.Trim().Length > 0;
+}
+
+/// <summary>This Mac's side of the same thing: the key it hands out. Whether it is
+/// switched on is not stored here — that is whether the login item exists, which is
+/// the thing that actually decides whether it runs.</summary>
+public sealed record RelayHostSettings
+{
+    public string Key { get; init; } = "";
+}
+
 /// <summary>One list of people and where it is kept — "Soccer team", "Primary class",
 /// "Neighbours". Each is its own database file, so nothing in one can leak into another
 /// and an import that empties one leaves the rest alone.
@@ -177,6 +203,8 @@ public sealed record AppSettings
             : Email with { DisplayName = YoursTruly.Core.Domain.Signature.SenderName(Signature) };
     public AndroidGatewaySettings AndroidGateway { get; init; } = new();
     public BlueBubblesSettings BlueBubbles { get; init; } = new();
+    public MacRelaySettings MacRelay { get; init; } = new();
+    public RelayHostSettings RelayHost { get; init; } = new();
     public TwilioSettings Twilio { get; init; } = new();
 
     /// <summary>Supplied when a file prints a seven-digit number, with no way of
@@ -197,13 +225,15 @@ public sealed record AppSettings
         && Email == other.Email
         && AndroidGateway == other.AndroidGateway
         && BlueBubbles == other.BlueBubbles
+        && MacRelay == other.MacRelay
+        && RelayHost == other.RelayHost
         && Twilio == other.Twilio
         && DefaultAreaCode == other.DefaultAreaCode
         && Appearance == other.Appearance;
 
     public override int GetHashCode() => HashCode.Combine(
         DatabasePath, Lists.Count, TextVia, Signature, Email, AndroidGateway, BlueBubbles,
-        HashCode.Combine(Twilio, DefaultAreaCode));
+        HashCode.Combine(Twilio, DefaultAreaCode, MacRelay, RelayHost));
 }
 
 public interface ISettingsStore

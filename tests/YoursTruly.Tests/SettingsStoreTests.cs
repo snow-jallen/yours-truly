@@ -48,7 +48,9 @@ public sealed class SettingsStoreTests : IDisposable
                 ServerUrl = "http://office-mac:1234",
                 Password = "correct horse",
             },
-            TextVia = TextTransport.BlueBubbles,
+            MacRelay = new MacRelaySettings { Address = "http://office-mac:47474", Key = "ABCDE-FGHJK-MNPQR-STUVW-XYZ23" },
+            RelayHost = new RelayHostSettings { Key = "KMNPQ-RSTUV-WXYZ2-34567-89ABC" },
+            TextVia = TextTransport.MacRelay,
             DefaultAreaCode = "801",
         };
 
