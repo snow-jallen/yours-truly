@@ -1299,12 +1299,45 @@ public sealed class UserInterfaceTests : IDisposable
 
             setup.AccountSid = "AC-a-fake-sid";
             setup.TwilioOk = true;
-            setup.TwilioStatus = "Sent you a test text.";
+            setup.TextStatus = "Sent you a test text.";
+            setup.CallStatus = "Rang you.";
 
             setup.AuthToken = "something else";
 
             Assert.False(setup.TwilioOk);
-            Assert.Equal("", setup.TwilioStatus);
+            Assert.Equal("", setup.TextStatus);
+            Assert.Equal("", setup.CallStatus);
+
+            // And a phone route's test is about that route's details.
+            setup.UseMacRelay = true;
+            setup.TextStatus = "Your Mac sent a test message.";
+            setup.MacRelayKey = "ABCDE-FGHJK-MNPQR-STUVW-XYZ23";
+            Assert.Equal("", setup.TextStatus);
+            await Task.CompletedTask;
+        }, _folder);
+
+    [Fact]
+    public Task A_text_test_answers_right_under_its_own_button() =>
+        InWindow(async (window, model) =>
+        {
+            model.ShowSetup();
+            var setup = (SetupViewModel)model.Current;
+            setup.UseAndroid = true;
+            setup.TextStatus = "Your phone accepted a test message.";
+            Dispatcher.UIThread.RunJobs();
+            window.Measure(window.ClientSize);
+            window.Arrange(new Rect(window.ClientSize));
+
+            // Pressing the button and seeing nothing happen is what this guards against:
+            // the answer has to be the next thing below the button, in the same card.
+            var button = window.GetVisualDescendants().OfType<Button>()
+                .Single(b => Equals(b.Content, setup.TestTextLabel));
+            var answer = window.GetVisualDescendants().OfType<TextBlock>()
+                .Single(t => t.Text == "Your phone accepted a test message.");
+            var panel = Assert.IsAssignableFrom<Panel>(button.GetVisualParent());
+            Assert.Same(panel, answer.GetVisualParent());
+            Assert.Equal(panel.Children.IndexOf(button) + 1, panel.Children.IndexOf(answer));
+            Assert.True(answer.IsEffectivelyVisible);
             await Task.CompletedTask;
         }, _folder);
 

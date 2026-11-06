@@ -236,8 +236,6 @@
             </StackPanel>
           </Border>
 
-          <TextBlock Text="{Binding TwilioStatus}" TextWrapping="Wrap" FontSize="12.5"
-                     Foreground="{DynamicResource Ink2}"/>
         </StackPanel>
       </StackPanel>
     </Border>
@@ -387,6 +385,8 @@
 
           <Button Content="{Binding TestTextLabel}" HorizontalAlignment="Left"
                   Command="{Binding TestTextCommand}" IsEnabled="{Binding !TwilioBusy}"/>
+          <TextBlock Text="{Binding TextStatus}" TextWrapping="Wrap" FontSize="12.5"
+                     Foreground="{DynamicResource Ink2}" IsVisible="{Binding TextStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
         </StackPanel>
       </StackPanel>
     </Border>
@@ -483,6 +483,8 @@
           </Border>
           <Button Content="Call me to check this works" HorizontalAlignment="Left"
                   Command="{Binding TestCallCommand}" IsEnabled="{Binding !TwilioBusy}"/>
+          <TextBlock Text="{Binding CallStatus}" TextWrapping="Wrap" FontSize="12.5"
+                     Foreground="{DynamicResource Ink2}" IsVisible="{Binding CallStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
         </StackPanel>
       </StackPanel>
     </Border>

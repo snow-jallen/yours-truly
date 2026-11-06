@@ -366,6 +366,7 @@ public sealed partial class SetupViewModel : ObservableObject
 
     partial void OnTextViaChanged(TextTransport value)
     {
+        TextStatus = "";
         foreach (var name in (string[])
                  ["UseTwilioForText", "UseIphone", "UseAndroid", "UseBlueBubbles", "UseMacRelay", "TextRouteBlocked",
                   "TwilioPurpose", "TestTextLabel"])
@@ -381,15 +382,39 @@ public sealed partial class SetupViewModel : ObservableObject
     partial void OnAccountSidChanged(string value) => ForgetTwilioTest();
     partial void OnAuthTokenChanged(string value) => ForgetTwilioTest();
     partial void OnFromNumberChanged(string value) => ForgetTwilioTest();
-    partial void OnTestNumberChanged(string value) => ForgetTwilioTest();
+    partial void OnTestNumberChanged(string value)
+    {
+        ForgetTwilioTest();
+        TextStatus = "";
+    }
+
+    // Any detail of the route texts take makes the last text test out of date.
+    partial void OnGatewayUrlChanged(string value) => ForgetTextTest();
+    partial void OnGatewayUserChanged(string value) => ForgetTextTest();
+    partial void OnGatewayPasswordChanged(string value) => ForgetTextTest();
+    partial void OnBlueBubblesUrlChanged(string value) => ForgetTextTest();
+    partial void OnBlueBubblesPasswordChanged(string value) => ForgetTextTest();
+    partial void OnMacRelayAddressChanged(string value) => ForgetTextTest();
+    partial void OnMacRelayKeyChanged(string value) => ForgetTextTest();
 
     /// <summary>Same again for the account the texts and calls go through.</summary>
     private void ForgetTwilioTest()
     {
         TwilioOk = false;
-        TwilioStatus = "";
+        CallStatus = "";
+        if (TextVia == TextTransport.Twilio) TextStatus = "";
     }
-    [ObservableProperty] private string _twilioStatus = "";
+
+    private void ForgetTextTest() => TextStatus = "";
+
+    /// <summary>What the last text test said, shown right under its button. It used to
+    /// be shown in the Twilio card further up, which is nowhere near the button when
+    /// texts go from a phone — so pressing it looked like nothing happened at all.</summary>
+    [ObservableProperty] private string _textStatus = "";
+
+    /// <summary>Likewise for the call test, under its own button.</summary>
+    [ObservableProperty] private string _callStatus = "";
+
     [ObservableProperty] private bool _twilioOk;
     [ObservableProperty] private bool _twilioBusy;
 
@@ -406,7 +431,7 @@ public sealed partial class SetupViewModel : ObservableObject
 
     private static readonly string[] NotWorthRechecking =
         [nameof(IsDirty), nameof(SaveHint), nameof(OtherLists), nameof(HasOtherLists),
-         nameof(EmailStatus), nameof(TwilioStatus),
+         nameof(EmailStatus), nameof(TextStatus), nameof(CallStatus),
          nameof(BackupStatus), nameof(EmailBusy), nameof(TwilioBusy), nameof(EmailOk), nameof(TwilioOk),
          nameof(TwilioPurpose), nameof(TestTextLabel), nameof(TextRouteBlocked),
          nameof(LooksLikeComputer), nameof(LooksLight), nameof(LooksDark),
@@ -511,7 +536,7 @@ public sealed partial class SetupViewModel : ObservableObject
     private async Task TestTextAsync()
     {
         TwilioBusy = true;
-        TwilioStatus = "Sending you a test text…";
+        TextStatus = "Sending you a test text…";
         try
         {
             _store.Save(Current);
@@ -528,8 +553,8 @@ public sealed partial class SetupViewModel : ObservableObject
             };
             var check = await sender.TestAsync(
                 TextVia == TextTransport.Twilio ? "" : TestNumber.Trim());
-            TwilioOk = check.Ok;
-            TwilioStatus = check.Message;
+            if (TextVia == TextTransport.Twilio) TwilioOk = check.Ok;
+            TextStatus = check.Message;
             Log.Record("test.text", Log.Details(
                 ("ok", check.Ok), ("via", TextVia.ToString()),
                 ("rcs", SendsRichText), ("result", Redact.Failure(check.Message))));
@@ -541,7 +566,7 @@ public sealed partial class SetupViewModel : ObservableObject
     private async Task TestCallAsync()
     {
         TwilioBusy = true;
-        TwilioStatus = "Calling you now…";
+        CallStatus = "Calling you now…";
         try
         {
             _store.Save(Current);
@@ -549,7 +574,7 @@ public sealed partial class SetupViewModel : ObservableObject
             var sender = new VoiceSender(new TwilioGateway(Current.Twilio), Current.Twilio);
             var check = await sender.TestAsync("");
             TwilioOk = check.Ok;
-            TwilioStatus = check.Message;
+            CallStatus = check.Message;
         }
         finally { TwilioBusy = false; }
     }
