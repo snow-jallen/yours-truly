@@ -35,6 +35,21 @@ public sealed class MessagesTextSenderTests
         Assert.Equal(["+14355550101", "Dinner Friday at 6:30."], run.Arguments);
     }
 
+    [Fact]
+    public async Task An_existing_conversation_is_tried_before_starting_a_new_one()
+    {
+        var osascript = new FakeOsascript();
+        await Sender(osascript).SendAsync("+14355550101", Message());
+
+        // Tahoe's ids first, then the older ones, and a new conversation only after all
+        // three: on Tahoe a new-conversation send is what came back Not Delivered.
+        var script = Assert.Single(osascript.Runs).Script;
+        var tahoe = script.IndexOf("\"any;-;\"", StringComparison.Ordinal);
+        var older = script.IndexOf("\"iMessage;-;\"", StringComparison.Ordinal);
+        var fresh = script.IndexOf("participant phoneNumber", StringComparison.Ordinal);
+        Assert.True(tahoe >= 0 && older > tahoe && fresh > older, script);
+    }
+
     [Theory]
     [InlineData("Relief Society's dinner is \"on\" Friday")]
     [InlineData("Line one\nLine two \\ backslash")]

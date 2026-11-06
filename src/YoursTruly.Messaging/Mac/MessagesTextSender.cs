@@ -26,17 +26,36 @@ public sealed class MessagesTextSender(IAppleScriptRunner runner, TimeSpan? paus
 
     public bool IsConfigured => runner.IsAvailable;
 
-    private const string Script = """
+    /// <summary>Into the conversation the user already has with this person, when there
+    /// is one, and only otherwise by starting one.
+    ///
+    /// The order matters on macOS 26 Tahoe. Tahoe keeps every one-to-one conversation
+    /// under an id starting "any;-;", and a message addressed the older way — to a
+    /// participant of the iMessage account — was refused as Not Delivered on a Tahoe
+    /// 26.4.1 Mac whose Messages app sent the same text by hand without trouble.
+    /// Sending into the conversation by its id is what Messages itself does, and is
+    /// what BlueBubbles tries first for the same reason. "iMessage;-;" and "SMS;-;" are
+    /// the same ids before Tahoe. A send that errors has not gone, so trying the next
+    /// way cannot deliver it twice.</summary>
+    internal const string Script = """
         on run argv
             set phoneNumber to item 1 of argv
             set messageText to item 2 of argv
             tell application "Messages"
+                repeat with prefix in {"any;-;", "iMessage;-;", "SMS;-;"}
+                    try
+                        send messageText to chat id ((prefix as text) & phoneNumber)
+                        return "conversation"
+                    end try
+                end repeat
                 try
                     set targetService to 1st account whose service type = iMessage
                     send messageText to participant phoneNumber of targetService
+                    return "new imessage"
                 on error
                     set targetService to 1st account whose service type = SMS
                     send messageText to participant phoneNumber of targetService
+                    return "new text"
                 end try
             end tell
         end run
